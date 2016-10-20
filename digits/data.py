@@ -2,6 +2,7 @@ from collections import namedtuple
 import os
 import pickle
 
+import numpy as np
 import scipy.io as spio
 
 Data = namedtuple('Data', ['dataset', 'role', 'X', 'y'])
@@ -25,12 +26,17 @@ class Loader:
                 os.remove(os.path.join(self.pickle_prefix, file))
         
     # TODO support more than cropped
-    def read_data(self, dataset, role):
+    def read_cropped(self, role):
         mat_file = os.path.join(self.data_prefix, role + self.mat_suffix)
         pickle_file = os.path.join(self.pickle_prefix, role + self.mat_suffix + self.pickle_suffix)
         if not os.path.isfile(pickle_file):
             mat = spio.loadmat(mat_file)
-            data = Data(dataset=dataset, role=role, X=mat['X'], y=mat['y'])
+            X = mat['X']
+            y = mat['y']
+            assert len(mat['X'].shape) == 4
+            assert len(mat['y'].shape) == 2
+            X = np.moveaxis(X, 3, 0)
+            data = Data(dataset='cropped', role=role, X=X, y=y)
             with open(pickle_file, 'wb') as f:
                 pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
             return data
