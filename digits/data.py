@@ -38,7 +38,7 @@ class Loader:
     assert os.path.isdir(self.pickled_path)
       
   def clear_pickled(self):
-    files = os.listdir(self.picked_path)
+    files = os.listdir(self.pickled_path)
     for file in files:
       if file.endswith('.pickle'):
         os.remove(os.path.join(self.pickled_path, file))
@@ -49,19 +49,18 @@ class Loader:
     pickle_file = os.path.join(self.pickled_path, role + self.mat_suffix + self.pickle_suffix)
     if not os.path.isfile(pickle_file):
       mat = loadmat(mat_file)
-      X = mat['X']
-      y = mat['y']
       assert len(mat['X'].shape) == 4
       assert len(mat['y'].shape) == 2
       assert mat['X'].shape[-1] == mat['y'].shape[0]
       assert mat['y'].shape[1] == 1
+      X = mat['X']
+      y = mat['y'].astype(int).ravel()
+      assert len(y.shape) == 1
       # Cleanup X: make row-oriented :(
       X = np.moveaxis(X, 3, 0)
       assert X.shape[0] == y.shape[0]
       # Cleanup y: '10' really means '0' :(
-      for i in range(len(y)):
-        if y[i][0] == 10:
-          y[i][0] = 0
+      y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
       data = Data(dataset='cropped', role=role, xforms=[], X=X, y=y)
       with open(pickle_file, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -87,14 +86,14 @@ class Loader:
     with open(self.raw_pickle_file(name), 'rb') as f:
       return pickle.load(f)
 
-def one_hot(max_vals, y):
-  d = []
-  for i in range(max_vals):
-    e = np.zeros(max_vals)
-    e[i] = 1
-    d.append(e)
-  fn = lambda yr: d[yr[0]]
-  return np.apply_along_axis(fn, 1, y)
+# def one_hot(max_vals, y):
+#   d = []
+#   for i in range(max_vals):
+#     e = np.zeros(max_vals)
+#     e[i] = 1
+#     d.append(e)
+#   fn = lambda yr: d[yr[0]]
+#   return np.apply_along_axis(fn, 1, y)
 
 def prepare_cropped(data, n=None, gray=False):
   assert data.dataset == 'cropped'
