@@ -54,7 +54,7 @@ class Loader:
       assert mat['X'].shape[-1] == mat['y'].shape[0]
       assert mat['y'].shape[1] == 1
       X = mat['X']
-      y = mat['y'].astype(int).ravel()
+      y = mat['y'].ravel()
       assert len(y.shape) == 1
       # Cleanup X: make row-oriented :(
       X = np.moveaxis(X, 3, 0)
@@ -105,6 +105,7 @@ def prepare_cropped(data, n=None, gray=False):
     y = y[:n]
   if gray:
     X = rgb2gray(X)
+  X = X.astype(np.float32)
   X = X.reshape((X.shape[0], product(X.shape[1:])))
   xforms = data.xforms + ['prepare']
   return data._replace(X=X, y=y, xforms=xforms)

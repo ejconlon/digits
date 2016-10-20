@@ -3,8 +3,6 @@ for p in ['.']:
   if p not in sys.path:
     sys.path.insert(0, p)
 
-import os
-
 import pytest
 import numpy as np
 
