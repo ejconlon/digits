@@ -10,3 +10,5 @@ test:
 test-verbose:
 	py.test -s tests
 
+tensorboard:
+	python -m tensorflow.tensorboard --logdir=logs/

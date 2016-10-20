@@ -3,9 +3,12 @@ import os
 import pickle
 
 import numpy as np
-import scipy.io as spio
+from scipy.io import loadmat
+from skimage.color import rgb2gray
 
-Data = namedtuple('Data', ['dataset', 'role', 'X', 'y'])
+from .common import product
+
+Data = namedtuple('Data', ['dataset', 'role', 'xforms', 'X', 'y'])
 
 class Loader:
     def __init__(self, path):
@@ -30,7 +33,7 @@ class Loader:
         mat_file = os.path.join(self.data_prefix, role + self.mat_suffix)
         pickle_file = os.path.join(self.pickle_prefix, role + self.mat_suffix + self.pickle_suffix)
         if not os.path.isfile(pickle_file):
-            mat = spio.loadmat(mat_file)
+            mat = loadmat(mat_file)
             X = mat['X']
             y = mat['y']
             assert len(mat['X'].shape) == 4
@@ -44,7 +47,7 @@ class Loader:
             for i in range(len(y)):
               if y[i][0] == 10:
                 y[i][0] = 0
-            data = Data(dataset='cropped', role=role, X=X, y=y)
+            data = Data(dataset='cropped', role=role, xforms=[], X=X, y=y)
             with open(pickle_file, 'wb') as f:
                 pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
             return data
@@ -68,3 +71,26 @@ class Loader:
     def read_raw(self, name):
         with open(self.raw_pickle_file(name), 'rb') as f:
             return pickle.load(f)
+
+def one_hot(max_vals, y):
+    d = []
+    for i in range(max_vals):
+        e = np.zeros(max_vals)
+        e[i] = 1
+        d.append(e)
+    fn = lambda yr: d[yr[0]]
+    return np.apply_along_axis(fn, 1, y)
+
+def prepare_cropped(data, n=None, gray=False):
+  assert data.dataset == 'cropped'
+  assert 'prepare' not in data.xforms
+  X = data.X
+  y = data.y
+  if n is not None:
+    X = X[:n]
+    y = y[:n]
+  if gray:
+    X = rgb2gray(X)
+  X = X.reshape((X.shape[0], product(X.shape[1:])))
+  xforms = data.xforms + ['prepare']
+  return data._replace(X=X, y=y, xforms=xforms)

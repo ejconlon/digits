@@ -4,6 +4,7 @@ notebooks/*.pickle
 data/
 pickled/
 results/
+logs/
 *.pdf
 *.pyc
 *.swo
