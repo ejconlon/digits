@@ -35,7 +35,15 @@ class Loader:
             y = mat['y']
             assert len(mat['X'].shape) == 4
             assert len(mat['y'].shape) == 2
+            assert mat['X'].shape[-1] == mat['y'].shape[0]
+            assert mat['y'].shape[1] == 1
+            # Cleanup X: make row-oriented :(
             X = np.moveaxis(X, 3, 0)
+            assert X.shape[0] == y.shape[0]
+            # Cleanup y: '10' really means '0' :(
+            for i in range(len(y)):
+              if y[i][0] == 10:
+                y[i][0] = 0
             data = Data(dataset='cropped', role=role, X=X, y=y)
             with open(pickle_file, 'wb') as f:
                 pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
