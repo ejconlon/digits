@@ -1,4 +1,5 @@
 .ipynb_checkpoints/
+.cache/
 notebooks/*.pickle
 data/
 pickled/
