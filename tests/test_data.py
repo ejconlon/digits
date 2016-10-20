@@ -10,8 +10,11 @@ import numpy as np
 
 from digits.data import *
 
+env = Env('.')
+env.assert_ready()
+
 def test_load_raw():
-  loader = Loader('.')
+  loader = Loader.from_env(env)
   loader.assert_ready()
   name = 'foo_bar_baz'
   if loader.raw_exists(name):
