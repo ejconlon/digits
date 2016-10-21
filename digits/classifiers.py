@@ -8,7 +8,24 @@ import tensorflow as tf
 
 from .common import one_hot, un_hot
 
+def prepare(name, env, roles=['train', 'valid', 'test']):
+  assert '.' not in name
+  logs_path = env.logs
+  name_path = os.path.join(logs_path, name)
+  if not os.path.isdir(name_path):
+    os.makedirs(name_path)
+  paths = dict((role, os.path.join(name_path, role)) for role in roles)
+  paths['ckpt'] = os.path.join(name_path, 'model.ckpt')
+  for path in paths.values():
+    if os.path.isfile(path):
+      os.remove(path)
+    elif os.path.isdir(path):
+      shutil.rmtree(path)
+  return paths
+
 def run_baseline(name, env, train_data, test_data):
+  paths = prepare(name, env)
+
   model = LogisticRegression()
   model.fit(train_data.X, train_data.y)
 
@@ -21,20 +38,7 @@ def run_baseline(name, env, train_data, test_data):
   return (train_acc, test_acc)
 
 def run_tf(name, env, train_data, test_data):
-  assert '.' not in name
-  logs_path = env.logs
-  name_path = os.path.join(logs_path, name)
-  if not os.path.isdir(name_path):
-    os.makedirs(name_path)
-  model_path = os.path.join(name_path, 'model.ckpt')
-  if os.path.isfile(model_path):
-    os.remove(model_path)
-  train_path = os.path.join(name_path, 'train')
-  if os.path.isdir(train_path):
-    shutil.rmtree(train_path)
-  test_path = os.path.join(name_path, 'test')
-  if os.path.isdir(test_path):
-    shutil.rmtree(test_path)
+  paths = prepare(name, env)
 
   graph = tf.Graph()
   num_classes = 10
@@ -64,8 +68,8 @@ def run_tf(name, env, train_data, test_data):
     train_prediction = tf.nn.softmax(logits)
     test_prediction = tf.nn.softmax(predict('test', tf_test_dataset))
 
-    train_writer = tf.train.SummaryWriter(train_path)
-    test_writer = tf.train.SummaryWriter(test_path)
+    train_writer = tf.train.SummaryWriter(paths['train'])
+    test_writer = tf.train.SummaryWriter(paths['test'])
     saver = tf.train.Saver()
 
   with tf.Session(graph=graph) as session:
@@ -78,7 +82,7 @@ def run_tf(name, env, train_data, test_data):
       # TODO don't summarize every step. also summarize test performance every so often
       train_writer.add_summary(summary, step)
 
-    saver.save(session, model_path)
+    saver.save(session, paths['ckpt'])
 
     train_pred = un_hot(num_classes, train_pred0)
     train_acc = accuracy_score(train_pred, train_data.y)
