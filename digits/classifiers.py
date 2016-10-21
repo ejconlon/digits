@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
@@ -19,6 +21,9 @@ def run_baseline(env, train_data, test_data):
 
 def run_tf(env, train_data, test_data):
   logs_path = env.logs
+  train_path = os.path.join(logs_path, 'tf', 'train')
+  test_path = os.path.join(logs_path, 'tf', 'test')
+
   graph = tf.Graph()
   num_classes = 10
   alpha = 0.5
@@ -46,13 +51,20 @@ def run_tf(env, train_data, test_data):
   
     train_prediction = tf.nn.softmax(logits)
     test_prediction = tf.nn.softmax(predict('test', tf_test_dataset))
+    train_writer = tf.train.SummaryWriter(train_path)
+    test_writer = tf.train.SummaryWriter(test_path)
 
   with tf.Session(graph=graph) as session:
     tf.initialize_all_variables().run()
-    for step in range(num_steps):
-      _, l, predictions = session.run([optimizer, loss, train_prediction])
 
-    train_pred = un_hot(num_classes, train_prediction.eval())
+    train_writer.add_graph(graph)
+
+    for step in range(num_steps):
+      summary, train_loss, train_pred0 = session.run([optimizer, loss, train_prediction])
+      # TODO don't summarize every step. also summarize test performance every so often
+      train_writer.add_summary(summary, step)
+
+    train_pred = un_hot(num_classes, train_pred0)
     train_acc = accuracy_score(train_pred, train_data.y)
     test_pred = un_hot(num_classes, test_prediction.eval())
     test_acc = accuracy_score(test_pred, test_data.y)
