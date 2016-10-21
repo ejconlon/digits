@@ -8,7 +8,7 @@ from skimage.color import rgb2gray
 
 from .common import product
 
-Data = namedtuple('Data', ['dataset', 'role', 'xforms', 'X', 'y'])
+Data = namedtuple('Data', ['X', 'y'])
 
 class Env:
   def __init__(self, path):
@@ -61,7 +61,7 @@ class Loader:
       assert X.shape[0] == y.shape[0]
       # Cleanup y: '10' really means '0' :(
       y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
-      data = Data(dataset='cropped', role=role, xforms=[], X=X, y=y)
+      data = Data(X=X, y=y)
       with open(pickle_file, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
       return data
@@ -86,9 +86,8 @@ class Loader:
     with open(self.raw_pickle_file(name), 'rb') as f:
       return pickle.load(f)
 
-def prepare_cropped(data, n=None, gray=False):
-  assert data.dataset == 'cropped'
-  assert 'prepare' not in data.xforms
+# TODO shuffle and return permutation map for associating indices
+def prepare_cropped(data, n=None, gray=False, shuffle=False):
   X = data.X
   y = data.y
   if n is not None:
@@ -98,5 +97,4 @@ def prepare_cropped(data, n=None, gray=False):
     X = rgb2gray(X)
   X = X.astype(np.float32)
   X = X.reshape((X.shape[0], product(X.shape[1:])))
-  xforms = data.xforms + ['prepare']
-  return data._replace(X=X, y=y, xforms=xforms)
+  return Data(X=X, y=y)

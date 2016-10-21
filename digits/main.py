@@ -36,7 +36,7 @@ def train(env, args):
 def test(env, args):
   raise Exception("TODO")
 
-ops = {
+OPS = {
   'inspect': inspect,
   'train': train,
   'test': test
@@ -47,7 +47,7 @@ def main():
   env.assert_ready()
   parser = make_parser()
   args = parser.parse_args()
-  ops[args.op](env, args)
+  OPS[args.op](env, args)
 
 if __name__ == '__main__':
   main()
