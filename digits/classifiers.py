@@ -1,4 +1,5 @@
 import os
+import shutil
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -7,7 +8,7 @@ import tensorflow as tf
 
 from .common import one_hot, un_hot
 
-def run_baseline(env, train_data, test_data):
+def run_baseline(name, env, train_data, test_data):
   model = LogisticRegression()
   model.fit(train_data.X, train_data.y)
 
@@ -19,10 +20,21 @@ def run_baseline(env, train_data, test_data):
 
   return (train_acc, test_acc)
 
-def run_tf(env, train_data, test_data):
+def run_tf(name, env, train_data, test_data):
+  assert '.' not in name
   logs_path = env.logs
-  train_path = os.path.join(logs_path, 'tf', 'train')
-  test_path = os.path.join(logs_path, 'tf', 'test')
+  name_path = os.path.join(logs_path, name)
+  if not os.path.isdir(name_path):
+    os.makedirs(name_path)
+  model_path = os.path.join(name_path, 'model.ckpt')
+  if os.path.isfile(model_path):
+    os.path.rm(model_path)
+  train_path = os.path.join(name_path, 'train')
+  if os.path.isdir(train_path):
+    shutil.rmtree(train_path)
+  test_path = os.path.join(name_path, 'test')
+  if os.path.isdir(test_path):
+    shutil.rmtree(test_path)
 
   graph = tf.Graph()
   num_classes = 10
@@ -51,8 +63,10 @@ def run_tf(env, train_data, test_data):
   
     train_prediction = tf.nn.softmax(logits)
     test_prediction = tf.nn.softmax(predict('test', tf_test_dataset))
+
     train_writer = tf.train.SummaryWriter(train_path)
     test_writer = tf.train.SummaryWriter(test_path)
+    saver = tf.train.Saver()
 
   with tf.Session(graph=graph) as session:
     tf.initialize_all_variables().run()
@@ -63,6 +77,8 @@ def run_tf(env, train_data, test_data):
       summary, train_loss, train_pred0 = session.run([optimizer, loss, train_prediction])
       # TODO don't summarize every step. also summarize test performance every so often
       train_writer.add_summary(summary, step)
+
+    saver.save(session, model_path)
 
     train_pred = un_hot(num_classes, train_pred0)
     train_acc = accuracy_score(train_pred, train_data.y)

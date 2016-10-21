@@ -4,6 +4,14 @@ init:
 notebook:
 	jupyter notebook notebooks/
 
+run:
+	python -m digits.main $(ARGS)
+
+clean:
+	rm -rf pickled/*
+	rm -rf logs/*
+	rm -rf results/*
+
 test:
 	py.test tests
 
