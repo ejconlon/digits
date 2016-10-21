@@ -54,7 +54,7 @@ class Loader:
       assert mat['X'].shape[-1] == mat['y'].shape[0]
       assert mat['y'].shape[1] == 1
       X = mat['X']
-      y = mat['y'].ravel()
+      y = mat['y'].ravel().astype(np.int32)
       assert len(y.shape) == 1
       # Cleanup X: make row-oriented :(
       X = np.moveaxis(X, 3, 0)
@@ -85,15 +85,6 @@ class Loader:
   def read_raw(self, name):
     with open(self.raw_pickle_file(name), 'rb') as f:
       return pickle.load(f)
-
-# def one_hot(max_vals, y):
-#   d = []
-#   for i in range(max_vals):
-#     e = np.zeros(max_vals)
-#     e[i] = 1
-#     d.append(e)
-#   fn = lambda yr: d[yr[0]]
-#   return np.apply_along_axis(fn, 1, y)
 
 def prepare_cropped(data, n=None, gray=False):
   assert data.dataset == 'cropped'
