@@ -5,7 +5,7 @@ import tensorflow as tf
 
 from .common import one_hot, un_hot
 
-def run_baseline(train_data, test_data):
+def run_baseline(env, train_data, test_data):
   model = LogisticRegression()
   model.fit(train_data.X, train_data.y)
 
@@ -17,19 +17,17 @@ def run_baseline(train_data, test_data):
 
   return (train_acc, test_acc)
 
-def make_constant(a):
-  return tf.constant(a, dtype=tf.as_dtype(a.dtype), shape=list(a.shape))
-
-def run_tf(train_data, test_data):
+def run_tf(env, train_data, test_data):
+  logs_path = env.logs
   graph = tf.Graph()
   num_classes = 10
   alpha = 0.5
   num_steps = 100
 
   with graph.as_default():
-    tf_train_dataset = make_constant(train_data.X)
-    tf_train_labels = make_constant(one_hot(num_classes, train_data.y))
-    tf_test_dataset = make_constant(test_data.X)
+    tf_train_dataset = tf.constant(train_data.X)
+    tf_train_labels = tf.constant(one_hot(num_classes, train_data.y))
+    tf_test_dataset = tf.constant(test_data.X)
   
     weights_shape = [train_data.X.shape[1], num_classes]
 
