@@ -87,12 +87,15 @@ class Loader:
       return pickle.load(f)
 
 # TODO shuffle and return permutation map for associating indices
-def prepare_cropped(data, n=None, gray=False, shuffle=False):
+def prepare_cropped(data, drop=None, keep=None, gray=False):
   X = data.X
   y = data.y
-  if n is not None:
-    X = X[:n]
-    y = y[:n]
+  if drop is not None:
+    X = X[drop:]
+    y = X[drop:]
+  if keep is not None:
+    X = X[:keep]
+    y = y[:keep]
   if gray:
     X = rgb2gray(X)
   X = X.astype(np.float32)

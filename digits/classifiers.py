@@ -1,4 +1,5 @@
 import os
+import pickle
 import shutil
 
 import numpy as np
@@ -14,29 +15,39 @@ def prepare(env, name, roles):
   name_path = os.path.join(logs_path, name)
   if not os.path.isdir(name_path):
     os.makedirs(name_path)
+  # per-role output dirs
   paths = dict((role, os.path.join(name_path, role)) for role in roles)
   for path in paths.values():
     if os.path.isdir(path):
       shutil.rmtree(path)
-  ckpt_path = os.path.join(name_path, 'model.ckpt')
-  if 'train' in roles and os.path.isfile(ckpt_path):
-    os.remove(ckpt_path)
-  paths['ckpt'] = ckpt_path
+  # train artifact files
+  artifacts = ['ckpt', 'clf']
+  artifact_paths = dict((art, os.path.join(name_path, 'model.' + art)) for art in artifacts)
+  if 'train' in roles:
+    for path in artifact_paths.values():
+      if os.path.isfile(path):
+        os.remove(path)
+  paths.update(artifact_paths)
   return paths
 
-def train_baseline(paths, train_data):
+def train_baseline(paths, train_data, valid_data):
   num_classes = 10
   model = LogisticRegression()
   model.fit(train_data.X, train_data.y)
+  with open(paths['clf'], 'wb') as f:
+    pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
   train_pred = model.predict(train_data.X)
-  return (model, one_hot(num_classes, train_pred))
+  valid_pred = model.predict(valid_data.X)
+  return (one_hot(num_classes, train_pred), one_hot(num_classes, valid_pred))
 
-def test_baseline(paths, model, test_data):
+def test_baseline(paths, test_data):
   num_classes = 10
+  with open(paths['clf'], 'rb') as f:
+    model = pickle.load(f)
   test_pred = model.predict(test_data.X)
   return one_hot(num_classes, test_pred)
 
-def train_tf(paths, train_data):
+def train_tf(paths, train_data, valid_data):
   graph = tf.Graph()
   num_features = train_data.X.shape[1]
   num_classes = 10
@@ -44,10 +55,9 @@ def train_tf(paths, train_data):
   num_steps = 100
 
   with graph.as_default():
-    # TODO make these placeholders
-    tf_train_dataset = tf.constant(train_data.X, name='train_dataset')
-    tf_train_labels = tf.constant(one_hot(num_classes, train_data.y), name='train_labels')
-    tf_test_dataset =  tf.placeholder(tf.float32, shape=[None, num_features], name='test_dataset')
+    tf_train_dataset = tf.placeholder(tf.float32, shape=[None, num_features], name='train_dataset')
+    tf_train_labels = tf.placeholder(tf.int32, shape=[None, num_classes], name='train_labels')
+    tf_valid_dataset =  tf.placeholder(tf.float32, shape=[None, num_features], name='valid_dataset')
   
     weights_shape = [num_features, num_classes]
 
@@ -65,52 +75,55 @@ def train_tf(paths, train_data):
     optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
   
     train_prediction = tf.nn.softmax(logits, name='train_prediction')
-    test_prediction = tf.nn.softmax(predict('test', tf_test_dataset), name='test_prediction')
+    valid_prediction = tf.nn.softmax(predict('valid', tf_valid_dataset), name='valid_prediction')
 
     train_writer = tf.train.SummaryWriter(paths['train'])
-    test_writer = tf.train.SummaryWriter(paths['test'])
+    valid_writer = tf.train.SummaryWriter(paths['valid'])
     saver = tf.train.Saver()
 
   with tf.Session(graph=graph) as session:
     tf.initialize_all_variables().run()
 
     train_writer.add_graph(graph)
+    feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(num_classes, train_data.y)}
+    summary, train_loss, train_pred = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+    # TODO don't summarize every step. also summarize test performance every so often
+    train_writer.add_summary(summary, 0)
 
-    for step in range(num_steps):
-      summary, train_loss, train_pred = session.run([optimizer, loss, train_prediction])
-      # TODO don't summarize every step. also summarize test performance every so often
-      train_writer.add_summary(summary, step)
+    [valid_pred] = session.run([valid_prediction], feed_dict={tf_valid_dataset: valid_data.X})
 
     saver.save(session, paths['ckpt'])
 
-  return (graph, train_pred)
+  return (train_pred, valid_pred)
 
-def test_tf(paths, graph, test_data):
+def test_tf(paths, test_data):
   num_classes = 10
+  graph = tf.Graph()
   with tf.Session(graph=graph) as session:
-    tf.initialize_all_variables().run()
-    raw_test_pred = graph.get_tensor_by_name('test_prediction:0')
-    result = session.run([raw_test_pred], feed_dict={'test_dataset:0': test_data.X})
-    return result[0]
+    new_saver = tf.train.import_meta_graph(paths['ckpt']+'.meta')
+    new_saver.restore(session, paths['ckpt'])
+    raw_test_pred = graph.get_tensor_by_name('valid_prediction:0')
+    [test_pred] = session.run([raw_test_pred], feed_dict={'valid_dataset:0': test_data.X})
+    return test_pred
 
 MODELS = {
   'baseline': (train_baseline, test_baseline),
   'tf': (train_tf, test_tf)
 }
 
-def train_model(env, name, train_data):
+def train_model(env, name, train_data, valid_data):
   assert name in MODELS
-  paths = prepare(env, name, ['train'])
-  return MODELS[name][0](paths, train_data)
+  paths = prepare(env, name, ['train', 'valid'])
+  return MODELS[name][0](paths, train_data, valid_data)
 
-def test_model(env, name, model, test_data):
+def test_model(env, name, test_data):
   assert name in MODELS
   paths = prepare(env, name, ['test'])
-  return MODELS[name][1](paths, model, test_data)
+  return MODELS[name][1](paths, test_data)
 
-def train_and_test_model(env, name, train_data, test_data):
+def train_and_test_model(env, name, train_data, valid_data, test_data):
   assert name in MODELS
-  paths = prepare(env, name, ['train', 'test'])
-  model, train_pred = MODELS[name][0](paths, train_data)
-  test_pred = MODELS[name][1](paths, model, test_data)
-  return (model, train_pred, test_pred)
+  paths = prepare(env, name, ['train', 'valid', 'test'])
+  train_pred, valid_pred = MODELS[name][0](paths, train_data, valid_data)
+  test_pred = MODELS[name][1](paths, test_data)
+  return (train_pred, valid_pred, test_pred)
