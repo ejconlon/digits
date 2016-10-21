@@ -1,0 +1,39 @@
+% Preamble
+% ---
+\documentclass{article}
+
+% Packages
+% ---
+\usepackage{amsmath} % Advanced math typesetting
+\usepackage[utf8]{inputenc} % Unicode support (Umlauts etc.)
+\usepackage[english]{babel}
+\usepackage{hyperref} % Add a link to your document
+\usepackage{graphicx} % Add pictures to your document
+\usepackage{listings} % Source code formatting and highlighting
+\usepackage{csquotes}
+\usepackage[
+backend=biber,
+style=alphabetic,
+sorting=ynt
+]{biblatex}
+
+\addbibresource{report.bib}
+\setlength{\parskip}{1em}
+
+% Main document
+% ---
+\begin{document}
+% Set up the maketitle command
+\author{Eric Conlon}
+\title{Classifying Street View House Numbers with Deep Learning}
+\date{2016-10-20}
+
+\maketitle{} % Generates title
+
+\tableofcontents{} % Generates table of contents from sections
+
+\section{Introduction}
+
+\printbibliography[heading=bibintoc,title={References}]
+
+\end{document}
