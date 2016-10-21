@@ -28,7 +28,7 @@ def run_tf(name, env, train_data, test_data):
     os.makedirs(name_path)
   model_path = os.path.join(name_path, 'model.ckpt')
   if os.path.isfile(model_path):
-    os.path.rm(model_path)
+    os.remove(model_path)
   train_path = os.path.join(name_path, 'train')
   if os.path.isdir(train_path):
     shutil.rmtree(train_path)
