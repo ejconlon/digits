@@ -42,15 +42,15 @@ def run_tf(name, env, train_data, test_data):
   num_steps = 100
 
   with graph.as_default():
-    tf_train_dataset = tf.constant(train_data.X)
-    tf_train_labels = tf.constant(one_hot(num_classes, train_data.y))
-    tf_test_dataset = tf.constant(test_data.X)
+    tf_train_dataset = tf.constant(train_data.X, name='train_dataset')
+    tf_train_labels = tf.constant(one_hot(num_classes, train_data.y), name='train_labels')
+    tf_test_dataset = tf.constant(test_data.X, name='test_dataset')
   
     weights_shape = [train_data.X.shape[1], num_classes]
 
     weights = tf.Variable(
-      tf.truncated_normal(weights_shape))
-    biases = tf.Variable(tf.zeros([num_classes]))
+      tf.truncated_normal(weights_shape), name='weights')
+    biases = tf.Variable(tf.zeros([num_classes]), name='biases')
 
     def predict(role, dataset):
       return tf.matmul(dataset, weights) + biases
