@@ -38,7 +38,7 @@ def make_report(path, pred, gold):
   filename = os.path.join(path, 'report.json')
   write_report(report, filename)
 
-def train_baseline(paths, train_data, valid_data):
+def train_baseline(paths, variant, train_data, valid_data):
   num_classes = 10
   model = LogisticRegression()
   model.fit(train_data.X, train_data.y)
@@ -55,14 +55,12 @@ def test_baseline(paths, test_data):
   test_pred = model.predict(test_data.X)
   return one_hot(num_classes, test_pred)
 
-def train_tf(paths, train_data, valid_data):
+def graph_tf(paths, variant, num_features, num_classes):
   graph = tf.Graph()
-  num_features = train_data.X.shape[1]
-  num_classes = 10
-  alpha = 0.5
-  num_steps = 100
 
   with graph.as_default():
+    writer = tf.train.SummaryWriter(paths['train'])
+
     tf_train_dataset = tf.placeholder(tf.float32, shape=[None, num_features], name='train_dataset')
     tf_train_labels = tf.placeholder(tf.int32, shape=[None, num_classes], name='train_labels')
     tf_valid_dataset =  tf.placeholder(tf.float32, shape=[None, num_features], name='valid_dataset')
@@ -80,25 +78,29 @@ def train_tf(paths, train_data, valid_data):
     loss = tf.reduce_mean(
       tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
   
-    optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
-  
     train_prediction = tf.nn.softmax(logits, name='train_prediction')
     valid_prediction = tf.nn.softmax(predict('valid', tf_valid_dataset), name='valid_prediction')
 
-    train_writer = tf.train.SummaryWriter(paths['train'])
-    valid_writer = tf.train.SummaryWriter(paths['valid'])
     saver = tf.train.Saver()
+
+  return (graph, loss, saver, writer)
+
+def train_tf(paths, variant, train_data, valid_data):
+  num_features = train_data.X.shape[1]
+  num_classes = 10
+  alpha = 0.05
+  graph, loss, saver, writer = graph_tf(paths, variant, num_features, num_classes)
 
   with tf.Session(graph=graph) as session:
     tf.initialize_all_variables().run()
-
-    train_writer.add_graph(graph)
+    writer.add_graph(graph)
+    optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
     feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(num_classes, train_data.y)}
-    summary, train_loss, train_pred = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+    summary, train_loss, train_pred = session.run([optimizer, loss, 'train_prediction:0'], feed_dict=feed_dict)
     # TODO don't summarize every step. also summarize test performance every so often
-    train_writer.add_summary(summary, 0)
+    writer.add_summary(summary, 0)
 
-    [valid_pred] = session.run([valid_prediction], feed_dict={tf_valid_dataset: valid_data.X})
+    [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
 
     saver.save(session, paths['ckpt'])
 
@@ -119,10 +121,10 @@ MODELS = {
   'tf': (train_tf, test_tf)
 }
 
-def train_model(env, name, train_data, valid_data):
+def train_model(env, name, variant, train_data, valid_data):
   assert name in MODELS
   paths = prepare(env, name, ['train', 'valid'], remove=True)
-  train_pred, valid_pred = MODELS[name][0](paths, train_data, valid_data)
+  train_pred, valid_pred = MODELS[name][0](paths, variant, train_data, valid_data)
   make_report(paths['train'], train_pred, train_data.y)
   make_report(paths['valid'], valid_pred, valid_data.y)
   return (train_pred, valid_pred)
@@ -134,10 +136,10 @@ def test_model(env, name, test_data):
   make_report(paths['test'], test_pred, test_data.y)
   return test_pred
 
-def train_and_test_model(env, name, train_data, valid_data, test_data):
+def train_and_test_model(env, name, variant, train_data, valid_data, test_data):
   assert name in MODELS
   paths = prepare(env, name, ['train', 'valid', 'test'], remove=True)
-  train_pred, valid_pred = MODELS[name][0](paths, train_data, valid_data)
+  train_pred, valid_pred = MODELS[name][0](paths, variant, train_data, valid_data)
   test_pred = MODELS[name][1](paths, test_data)
   make_report(paths['train'], train_pred, train_data.y)
   make_report(paths['valid'], valid_pred, valid_data.y)
