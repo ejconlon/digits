@@ -8,8 +8,9 @@ from sklearn.metrics import accuracy_score
 import tensorflow as tf
 
 from .common import one_hot
+from .metrics import Metrics, write_report, read_report
 
-def prepare(env, name, roles):
+def prepare(env, name, roles, remove=False):
   assert '.' not in name
   logs_path = env.logs
   name_path = os.path.join(logs_path, name)
@@ -18,17 +19,24 @@ def prepare(env, name, roles):
   # per-role output dirs
   paths = dict((role, os.path.join(name_path, role)) for role in roles)
   for path in paths.values():
-    if os.path.isdir(path):
+    if os.path.isdir(path) and remove:
       shutil.rmtree(path)
+    os.makedirs(path)
   # train artifact files
   artifacts = ['ckpt', 'clf']
   artifact_paths = dict((art, os.path.join(name_path, 'model.' + art)) for art in artifacts)
-  if 'train' in roles:
+  if 'train' in roles and remove:
     for path in artifact_paths.values():
       if os.path.isfile(path):
         os.remove(path)
   paths.update(artifact_paths)
   return paths
+
+def make_report(path, pred, gold):
+  metrics = Metrics(10, pred, gold)
+  report = metrics.report()
+  filename = os.path.join(path, 'report.json')
+  write_report(report, filename)
 
 def train_baseline(paths, train_data, valid_data):
   num_classes = 10
@@ -113,17 +121,31 @@ MODELS = {
 
 def train_model(env, name, train_data, valid_data):
   assert name in MODELS
-  paths = prepare(env, name, ['train', 'valid'])
-  return MODELS[name][0](paths, train_data, valid_data)
+  paths = prepare(env, name, ['train', 'valid'], remove=True)
+  train_pred, valid_pred = MODELS[name][0](paths, train_data, valid_data)
+  make_report(paths['train'], train_pred, train_data.y)
+  make_report(paths['valid'], valid_pred, valid_data.y)
+  return (train_pred, valid_pred)
 
 def test_model(env, name, test_data):
   assert name in MODELS
-  paths = prepare(env, name, ['test'])
-  return MODELS[name][1](paths, test_data)
+  paths = prepare(env, name, ['test'], remove=True)
+  test_pred = MODELS[name][1](paths, test_data)
+  make_report(paths['test'], test_pred, test_data.y)
+  return test_pred
 
 def train_and_test_model(env, name, train_data, valid_data, test_data):
   assert name in MODELS
-  paths = prepare(env, name, ['train', 'valid', 'test'])
+  paths = prepare(env, name, ['train', 'valid', 'test'], remove=True)
   train_pred, valid_pred = MODELS[name][0](paths, train_data, valid_data)
   test_pred = MODELS[name][1](paths, test_data)
+  make_report(paths['train'], train_pred, train_data.y)
+  make_report(paths['valid'], valid_pred, valid_data.y)
+  make_report(paths['test'], test_pred, test_data.y)
   return (train_pred, valid_pred, test_pred)
+
+def load_report(env, name, role):
+  assert name in MODELS
+  paths = prepare(env, name, [role], remove=False)
+  filename = os.path.join(paths[role], 'report.json')
+  return read_report(filename)

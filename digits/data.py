@@ -8,7 +8,7 @@ from skimage.color import rgb2gray
 
 from .common import product
 
-Data = namedtuple('Data', ['X', 'y'])
+Data = namedtuple('Data', ['X', 'y', 'offset', 'inv_map'])
 
 class Env:
   def __init__(self, path):
@@ -61,7 +61,7 @@ class Loader:
       assert X.shape[0] == y.shape[0]
       # Cleanup y: '10' really means '0' :(
       y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
-      data = Data(X=X, y=y)
+      data = Data(X=X, y=y, offset=0, inv_map=None)
       with open(pickle_file, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
       return data
@@ -86,18 +86,46 @@ class Loader:
     with open(self.raw_pickle_file(name), 'rb') as f:
       return pickle.load(f)
 
-# TODO shuffle and return permutation map for associating indices
-def prepare_cropped(data, drop=None, keep=None, gray=False):
+  def load_data(self, name):
+    pc = lambda d: prepare_cropped(pc, keep=k, gray=True, shuffle=True)
+    if name == 'crop-train':
+      return prepare_cropped(self.read_cropped('train'), gray=True, shuffle=True, then_keep=1000)
+    elif name == 'crop-valid' or name == 'crop-test':
+      return prepare_cropped(self.read_cropped('test'), gray=True, shuffle=True, then_keep=100)
+    else:
+      raise Exception('Unknown dataset: ' + name)
+
+
+# TODO consider distribution across all classes
+def prepare_cropped(data, drop=None, keep=None, gray=False, shuffle=False, then_keep=None):
+  assert data.X.shape[0] == data.y.shape[0]
+  assert data.offset == 0
+  assert data.inv_map is None
   X = data.X
   y = data.y
   if drop is not None:
     X = X[drop:]
-    y = X[drop:]
+    y = y[drop:]
   if keep is not None:
     X = X[:keep]
     y = y[:keep]
+    lim = keep
+  else:
+    lim = len(X)
   if gray:
     X = rgb2gray(X)
   X = X.astype(np.float32)
   X = X.reshape((X.shape[0], product(X.shape[1:])))
-  return Data(X=X, y=y)
+  if shuffle:
+    inv_map = np.arange(lim, dtype=np.int32)
+    np.random.shuffle(inv_map)
+    X = X[inv_map]
+    y = y[inv_map]
+  else:
+    inv_map = None
+  if then_keep is not None:
+    X = X[:then_keep]
+    y = y[:then_keep]
+    if inv_map is not None:
+      inv_map = inv_map[:then_keep]
+  return Data(X=X, y=y, offset=drop, inv_map=inv_map)
