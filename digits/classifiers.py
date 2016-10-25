@@ -86,8 +86,8 @@ class TFModel(Model):
         tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
       prediction = tf.nn.softmax(logits, name='prediction')
-      #correct = tf.equal(tf.argmax(train_prediction, 1), tf.argmax(y, 1))
-      #accuracy = tf.reduce_mean(tf.cast(train_correct, tf.float32), name='accuracy')
+      correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
+      accuracy = tf.reduce_mean(tf.cast(correct, tf.float32), name='accuracy')
 
       writer = tf.train.SummaryWriter(role_path)
       saver = tf.train.Saver()
@@ -120,13 +120,15 @@ class TFModel(Model):
       while step * batch_size < training_iters:
         dataset = train_data.X[offset:offset+batch_size]
         labels = train_labels[offset:offset+batch_size]
-        feed_dict = {'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': dropout}
+        feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
         act_opt_summary, act_loss_summary, train_pred = session.run([optimizer, loss_summary, 'prediction:0'], feed_dict=feed_dict)
         if step % display_step == 0:
-          # TODO calculate accuracy too
-          print("step", step)
-          #writer.add_summary(act_opt_summary, step)
-          writer.add_summary(act_loss_summary, step)
+          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
+          display_loss, display_loss_summary, display_acc = session.run([loss, loss_summary, 'accuracy:0'], feed_dict=feed_dict)
+          print('step {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
+          # TODO write merged summaries
+          writer.add_summary(display_loss_summary, step)
+
         offset += batch_size
         offset %= num_examples
         step += 1

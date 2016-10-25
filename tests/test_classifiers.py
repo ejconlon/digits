@@ -19,9 +19,7 @@ env = Env('.')
 env.assert_ready()
 loader = Loader.from_env(env)
 loader.assert_ready()
-orig = loader.read_cropped('test')
-train_data = prepare_cropped(orig, keep=1000, gray=True)
-valid_data = prepare_cropped(orig, drop=1000, keep=100, gray=True)
+
 
 def acc(actual, expected):
   assert len(expected.shape) == 1
@@ -30,7 +28,16 @@ def acc(actual, expected):
   num_classes = actual.shape[1]
   return accuracy_score(un_hot(num_classes, actual), expected)
 
-def run_model(model):
+def run_model(model, big):
+  orig = loader.read_cropped('test')
+  if big:
+    train_orig = loader.read_cropped('train')
+    train_data = prepare_cropped(train_orig, gray=True)
+    valid_data = prepare_cropped(orig, gray=True)
+  else:
+    orig = loader.read_cropped('test')
+    train_data = prepare_cropped(orig, keep=1000, gray=True)
+    valid_data = prepare_cropped(orig, drop=1000, keep=100, gray=True)
   train_pred, valid_pred = run_train_model(env, model, None, train_data, valid_data)
   valid_pred2 = run_test_model(env, model, None, valid_data)
   np.testing.assert_array_equal(valid_pred, valid_pred2)
@@ -38,7 +45,7 @@ def run_model(model):
   write_results(env, args, 'test', orig, valid_data, valid_pred)
 
 def test_baseline():
-  run_model('baseline')
+  run_model('baseline', big=False)
 
 def test_tf():
-  run_model('tf')
+  run_model('tf', big=True)

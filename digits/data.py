@@ -183,4 +183,5 @@ def prepare_cropped(data, drop=None, keep=None, gray=False, shuffle=False, then_
     y = y[:then_keep]
     if inv_map is not None:
       inv_map = inv_map[:then_keep]
-  return Data(X=X, y=y, offset=drop, inv_map=inv_map)
+  offset = drop if drop is not None else 0
+  return Data(X=X, y=y, offset=offset, inv_map=inv_map)
