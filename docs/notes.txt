@@ -24,8 +24,10 @@ op args
 post ideas
 "more data better than better algorithms"
 split your pipeline up
-- there will be slow parts
+there will be slow parts
+visualize long-running processes
 figure out where to divide work
+standardize metrics and criteria
 make sure you can still run it on one machine
 make it easy to explore results
 plan for heterogeneity
