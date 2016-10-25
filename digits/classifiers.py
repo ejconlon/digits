@@ -89,10 +89,15 @@ class TFModel(Model):
       correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
       accuracy = tf.reduce_mean(tf.cast(correct, tf.float32), name='accuracy')
 
+      loss_summary = tf.scalar_summary('loss', loss)
+      acc_summary = tf.scalar_summary('accuracy', accuracy)
+
+      summaries = tf.merge_all_summaries()
+
       writer = tf.train.SummaryWriter(role_path)
       saver = tf.train.Saver()
 
-    return (graph, loss, saver, writer)
+    return (graph, loss, saver, writer, summaries)
 
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
@@ -104,12 +109,11 @@ class TFModel(Model):
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
 
-    graph, loss, saver, writer = self._graph()
+    graph, loss, saver, writer, summaries = self._graph()
     train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
-      loss_summary = tf.scalar_summary('loss', loss)
       writer.add_graph(graph)
       optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
 
@@ -121,24 +125,27 @@ class TFModel(Model):
         dataset = train_data.X[offset:offset+batch_size]
         labels = train_labels[offset:offset+batch_size]
         feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
-        act_opt_summary, act_loss_summary, train_pred = session.run([optimizer, loss_summary, 'prediction:0'], feed_dict=feed_dict)
+        session.run([optimizer], feed_dict=feed_dict)
         if step % display_step == 0:
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
-          display_loss, display_loss_summary, display_acc = session.run([loss, loss_summary, 'accuracy:0'], feed_dict=feed_dict)
+          display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
           print('step {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
-          # TODO write merged summaries
-          writer.add_summary(display_loss_summary, step)
-
+          writer.add_summary(display_summaries, step)
         offset += batch_size
         offset %= num_examples
         step += 1
 
+      print('predicting train')
+      [train_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': 1.0})
+
       if valid_data is not None:
         valid_labels = one_hot(self.num_classes, valid_data.y)
+        print('predicting valid')
         [valid_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': valid_data.X, 'labels:0': valid_labels, 'keep_prob:0': 1.0})
       else:
         valid_pred = None
 
+      print('saving')
       saver.save(session, ckpt_path)
 
     return (train_pred, valid_pred)
