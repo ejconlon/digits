@@ -36,13 +36,13 @@ def read_report(filename):
   with open(filename, 'r') as f:
     return Report(**json_tricks.np.load(f))
 
-# def write_viz(viz, filename):
-#   with open(filename, 'wb') as f:
-#     pickle.dump(viz, f, protocol=pickle.HIGHEST_PROTOCOL)
+def pickle_to(x, filename):
+  with open(filename, 'wb') as f:
+    pickle.dump(x, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-# def read_viz(filename):
-#   with open(filename, 'rb') as f:
-#     return pickle.load(f)
+def unpickle_from(filename):
+  with open(filename, 'rb') as f:
+    return pickle.load(f)
 
 class Metrics:
   def __init__(self, num_classes, pred_hot, gold):

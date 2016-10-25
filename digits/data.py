@@ -136,11 +136,15 @@ class Loader:
   #     return pickle.load(f)
 
   def load_data(self, name):
-    pc = lambda d: prepare_cropped(pc, keep=k, gray=True, shuffle=True)
+    """ Return tuple (orig, proc) """
     if name == 'crop-train':
-      return prepare_cropped(self.read_cropped('train'), gray=True, shuffle=True, then_keep=1000)
+      orig = self.read_cropped('train')
+      proc = prepare_cropped(orig, gray=True, shuffle=True, then_keep=1000)
+      return (orig, proc)
     elif name == 'crop-valid' or name == 'crop-test':
-      return prepare_cropped(self.read_cropped('test'), gray=True, shuffle=True, then_keep=100)
+      orig = self.read_cropped('test')
+      proc = prepare_cropped(orig, gray=True, shuffle=True, then_keep=100)
+      return (orig, proc)
     else:
       raise Exception('Unknown dataset: ' + name)
 

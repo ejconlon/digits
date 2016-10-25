@@ -6,11 +6,9 @@ import shutil
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
 import tensorflow as tf
 
 from .common import one_hot
-from .metrics import Metrics, write_report, read_report
 
 class Model(metaclass=ABCMeta):
   def __init__(self, env, name, variant, num_features, num_classes):
@@ -127,25 +125,12 @@ MODELS = {
   'tf': TFModel
 }
 
-def make_report(role_path, pred, gold):
-  metrics = Metrics(10, pred, gold)
-  report = metrics.report()
-  filename = os.path.join(role_path, 'report.json')
-  write_report(report, filename)
-
 def run_train_model(env, name, variant, train_data, valid_data):
   model = MODELS[name](env, name, variant, train_data.X.shape[1], 10)
   train_pred, valid_pred = model.train(train_data, valid_data)
-  make_report(env.resolve_role(name, variant, 'train'), train_pred, train_data.y)
-  make_report(env.resolve_role(name, variant, 'valid'), valid_pred, valid_data.y)
   return (train_pred, valid_pred)
 
 def run_test_model(env, name, variant, test_data):
   model = MODELS[name](env, name, variant, test_data.X.shape[1], 10)
   test_pred = model.test(test_data)
-  make_report(env.resolve_role(name, variant, 'test'), test_pred, test_data.y)
   return test_pred
-
-def run_load_report(env, name, role):
-  filename = env.resolve_role_file(name, variant, 'train', 'report.json')
-  return read_report(filename)

@@ -16,3 +16,22 @@ workflow:
 command includes
 
 op args
+
+
+
+
+----
+post ideas
+"more data better than better algorithms"
+split your pipeline up
+- there will be slow parts
+figure out where to divide work
+make sure you can still run it on one machine
+make it easy to explore results
+plan for heterogeneity
+types of testing
+- stable results
+- no crash
+- watermark
+- replay
+- controlled data
