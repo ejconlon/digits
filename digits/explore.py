@@ -1,6 +1,9 @@
+from base64 import b64encode
 from collections import namedtuple
+from io import BytesIO, StringIO
 import os
 
+import pandas as pd
 from PIL import Image
 
 from .metrics import read_report, unpickle_from
@@ -28,3 +31,22 @@ def explore(env, model, variant, role):
   else:
     viz = None
   return Explorer(report=report, metrics=metrics, viz=viz)
+
+def img_tag(arr, mode=None):
+    img = Image.fromarray(arr, mode)
+    out = BytesIO()
+    img.save(out, format='png')
+    return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
+
+def viz_table(tab):
+  # need to disable truncation for this function because it will chop image tags :(
+  old_width = pd.get_option('display.max_colwidth')
+  pd.set_option('display.max_colwidth', -1)
+  formatters = {
+    'orig_image': lambda arr: img_tag(arr, 'RGB'),
+    'proc_image': lambda arr: img_tag(arr, 'L')
+  }
+  buf = StringIO()
+  tab.to_html(buf, formatters=formatters, escape=False)
+  pd.set_option('display.max_colwidth', old_width)
+  return buf.getvalue()
