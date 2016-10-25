@@ -110,7 +110,7 @@ class Loader:
       assert X.shape[0] == y.shape[0]
       # Cleanup y: '10' really means '0' :(
       y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
-      data = Data(name=None, X=X, y=y, offset=0, inv_map=None)
+      data = Data(X=X, y=y, offset=0, inv_map=None)
       with open(pickle_file, 'wb') as f:
         pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
       return data

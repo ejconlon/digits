@@ -1,6 +1,8 @@
 from collections import namedtuple
 import os
 
+from PIL import Image
+
 from .metrics import read_report, unpickle_from
 
 Explorer = namedtuple('Explorer', [

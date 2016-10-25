@@ -53,7 +53,7 @@ def write_results(env, args, role, orig, proc, pred):
   pickle_to(metrics, metrics_file)
   report = metrics.report()
   write_report(report, report_file)
-  viz = metrics.viz(orig, proc, 10)
+  viz = metrics.viz(orig, proc, (32, 32), 10)
   pickle_to(viz, viz_file)
 
 def train(env, loader, args):
