@@ -1,3 +1,5 @@
+from abc import ABCMeta, abstractmethod
+from collections import namedtuple
 import os
 import pickle
 import shutil
@@ -10,144 +12,140 @@ import tensorflow as tf
 from .common import one_hot
 from .metrics import Metrics, write_report, read_report
 
-def prepare(env, name, roles, remove=False):
-  assert '.' not in name
-  logs_path = env.logs
-  name_path = os.path.join(logs_path, name)
-  if not os.path.isdir(name_path):
-    os.makedirs(name_path)
-  # per-role output dirs
-  paths = dict((role, os.path.join(name_path, role)) for role in roles)
-  for path in paths.values():
-    if os.path.isdir(path) and remove:
-      shutil.rmtree(path)
-    os.makedirs(path)
-  # train artifact files
-  artifacts = ['ckpt', 'clf']
-  artifact_paths = dict((art, os.path.join(name_path, 'model.' + art)) for art in artifacts)
-  if 'train' in roles and remove:
-    for path in artifact_paths.values():
-      if os.path.isfile(path):
-        os.remove(path)
-  paths.update(artifact_paths)
-  return paths
+class Model(metaclass=ABCMeta):
+  def __init__(self, env, name, variant, num_features, num_classes):
+    self.env = env
+    self.name = name
+    self.variant = variant
+    self.num_features = num_features
+    self.num_classes = num_classes
 
-def make_report(path, pred, gold):
-  metrics = Metrics(10, pred, gold)
-  report = metrics.report()
-  filename = os.path.join(path, 'report.json')
-  write_report(report, filename)
+  def _resolve_model(self, clean=False):
+    return self.env.resolve_model(self.name, self.variant, clean)
 
-def train_baseline(paths, variant, train_data, valid_data):
-  num_classes = 10
-  model = LogisticRegression()
-  model.fit(train_data.X, train_data.y)
-  with open(paths['clf'], 'wb') as f:
-    pickle.dump(model, f, protocol=pickle.HIGHEST_PROTOCOL)
-  train_pred = model.predict(train_data.X)
-  valid_pred = model.predict(valid_data.X)
-  return (one_hot(num_classes, train_pred), one_hot(num_classes, valid_pred))
+  def _resolve_role(self, role, clean=False):
+    return self.env.resolve_role(self.name, self.variant, role, clean)
 
-def test_baseline(paths, test_data):
-  num_classes = 10
-  with open(paths['clf'], 'rb') as f:
-    model = pickle.load(f)
-  test_pred = model.predict(test_data.X)
-  return one_hot(num_classes, test_pred)
+  def _resolve_model_file(self, filename, clean=False):
+    return self.env.resolve_model_file(self.name, self.variant, filename, clean)
 
-def graph_tf(paths, variant, num_features, num_classes):
-  graph = tf.Graph()
+  def _resolve_role_file(self, role, filename, clean=False):
+    return self.env.resolve_role_file(self.name, self.variant, role, filename, clean)
 
-  with graph.as_default():
-    writer = tf.train.SummaryWriter(paths['train'])
+  @abstractmethod
+  def train(self, train_data, valid_data):
+    """ Return (one_hot preds, one_hot preds) """
+    pass
 
-    tf_train_dataset = tf.placeholder(tf.float32, shape=[None, num_features], name='train_dataset')
-    tf_train_labels = tf.placeholder(tf.int32, shape=[None, num_classes], name='train_labels')
-    tf_valid_dataset =  tf.placeholder(tf.float32, shape=[None, num_features], name='valid_dataset')
-  
-    weights_shape = [num_features, num_classes]
+  @abstractmethod
+  def test(self, test_data):
+    """ Return (one_hot preds) """
+    pass
 
-    weights = tf.Variable(
-      tf.truncated_normal(weights_shape), name='weights')
-    biases = tf.Variable(tf.zeros([num_classes]), name='biases')
+class BaselineModel(Model):
+  def train(self, train_data, valid_data):
+    clf_file = self._resolve_model_file('model.clf', clean=True)
+    clf = LogisticRegression()
+    clf.fit(train_data.X, train_data.y)
+    with open(clf_file, 'wb') as f:
+      pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
+    train_pred = clf.predict(train_data.X)
+    valid_pred = clf.predict(valid_data.X)
+    return (one_hot(self.num_classes, train_pred), one_hot(self.num_classes, valid_pred))
 
-    def predict(role, dataset):
-      return tf.matmul(dataset, weights) + biases
+  def test(self, test_data):
+    clf_file = self._resolve_model_file('model.clf')
+    with open(clf_file, 'rb') as f:
+      clf = pickle.load(f)
+    test_pred = clf.predict(test_data.X)
+    return one_hot(self.num_classes, test_pred)
 
-    logits = predict('train', tf_train_dataset)
-    loss = tf.reduce_mean(
-      tf.nn.softmax_cross_entropy_with_logits(logits, tf_train_labels))
-  
-    train_prediction = tf.nn.softmax(logits, name='train_prediction')
-    valid_prediction = tf.nn.softmax(predict('valid', tf_valid_dataset), name='valid_prediction')
+class TFModel(Model):
+  def _graph(self):
+    role_path = self._resolve_role('train')
+    graph = tf.Graph()
 
-    saver = tf.train.Saver()
+    with graph.as_default():
+      writer = tf.train.SummaryWriter(role_path)
 
-  return (graph, loss, saver, writer)
+      train_dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='train_dataset')
+      train_labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='train_labels')
+      valid_dataset =  tf.placeholder(tf.float32, shape=[None, self.num_features], name='valid_dataset')
+    
+      weights_shape = [self.num_features, self.num_classes]
 
-def train_tf(paths, variant, train_data, valid_data):
-  num_features = train_data.X.shape[1]
-  num_classes = 10
-  alpha = 0.05
-  graph, loss, saver, writer = graph_tf(paths, variant, num_features, num_classes)
+      weights = tf.Variable(
+        tf.truncated_normal(weights_shape), name='weights')
+      biases = tf.Variable(tf.zeros([self.num_classes]), name='biases')
 
-  with tf.Session(graph=graph) as session:
-    tf.initialize_all_variables().run()
-    writer.add_graph(graph)
-    optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
-    feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(num_classes, train_data.y)}
-    summary, train_loss, train_pred = session.run([optimizer, loss, 'train_prediction:0'], feed_dict=feed_dict)
-    # TODO don't summarize every step. also summarize test performance every so often
-    writer.add_summary(summary, 0)
+      def predict(role, dataset):
+        return tf.matmul(dataset, weights) + biases
 
-    [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
+      logits = predict('train', train_dataset)
+      loss = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(logits, train_labels))
+    
+      train_prediction = tf.nn.softmax(logits, name='train_prediction')
+      valid_prediction = tf.nn.softmax(predict('valid', valid_dataset), name='valid_prediction')
 
-    saver.save(session, paths['ckpt'])
+      saver = tf.train.Saver()
 
-  return (train_pred, valid_pred)
+    return (graph, loss, saver, writer)
 
-def test_tf(paths, test_data):
-  num_classes = 10
-  graph = tf.Graph()
-  with tf.Session(graph=graph) as session:
-    new_saver = tf.train.import_meta_graph(paths['ckpt']+'.meta')
-    new_saver.restore(session, paths['ckpt'])
-    raw_test_pred = graph.get_tensor_by_name('valid_prediction:0')
-    [test_pred] = session.run([raw_test_pred], feed_dict={'valid_dataset:0': test_data.X})
-    return test_pred
+  def train(self, train_data, valid_data):
+    ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
+    alpha = 0.05
+    graph, loss, saver, writer = self._graph()
+
+    with tf.Session(graph=graph) as session:
+      tf.initialize_all_variables().run()
+      writer.add_graph(graph)
+      optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
+      feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(self.num_classes, train_data.y)}
+      summary, train_loss, train_pred = session.run([optimizer, loss, 'train_prediction:0'], feed_dict=feed_dict)
+      # TODO don't summarize every step. also summarize test performance every so often
+      writer.add_summary(summary, 0)
+
+      [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
+
+      saver.save(session, ckpt_path)
+
+    return (train_pred, valid_pred)
+
+  def test(self, test_data):
+    ckpt_path = self._resolve_model_file('model.ckpt')
+    graph = tf.Graph()
+    with tf.Session(graph=graph) as session:
+      new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
+      new_saver.restore(session, ckpt_path)
+      raw_test_pred = graph.get_tensor_by_name('valid_prediction:0')
+      [test_pred] = session.run([raw_test_pred], feed_dict={'valid_dataset:0': test_data.X})
+      return test_pred
 
 MODELS = {
-  'baseline': (train_baseline, test_baseline),
-  'tf': (train_tf, test_tf)
+  'baseline': BaselineModel,
+  'tf': TFModel
 }
 
-def train_model(env, name, variant, train_data, valid_data):
-  assert name in MODELS
-  paths = prepare(env, name, ['train', 'valid'], remove=True)
-  train_pred, valid_pred = MODELS[name][0](paths, variant, train_data, valid_data)
-  make_report(paths['train'], train_pred, train_data.y)
-  make_report(paths['valid'], valid_pred, valid_data.y)
+def make_report(role_path, pred, gold):
+  metrics = Metrics(10, pred, gold)
+  report = metrics.report()
+  filename = os.path.join(role_path, 'report.json')
+  write_report(report, filename)
+
+def run_train_model(env, name, variant, train_data, valid_data):
+  model = MODELS[name](env, name, variant, train_data.X.shape[1], 10)
+  train_pred, valid_pred = model.train(train_data, valid_data)
+  make_report(env.resolve_role(name, variant, 'train'), train_pred, train_data.y)
+  make_report(env.resolve_role(name, variant, 'valid'), valid_pred, valid_data.y)
   return (train_pred, valid_pred)
 
-def test_model(env, name, test_data):
-  assert name in MODELS
-  paths = prepare(env, name, ['test'], remove=True)
-  test_pred = MODELS[name][1](paths, test_data)
-  make_report(paths['test'], test_pred, test_data.y)
+def run_test_model(env, name, variant, test_data):
+  model = MODELS[name](env, name, variant, test_data.X.shape[1], 10)
+  test_pred = model.test(test_data)
+  make_report(env.resolve_role(name, variant, 'test'), test_pred, test_data.y)
   return test_pred
 
-def train_and_test_model(env, name, variant, train_data, valid_data, test_data):
-  assert name in MODELS
-  paths = prepare(env, name, ['train', 'valid', 'test'], remove=True)
-  train_pred, valid_pred = MODELS[name][0](paths, variant, train_data, valid_data)
-  test_pred = MODELS[name][1](paths, test_data)
-  make_report(paths['train'], train_pred, train_data.y)
-  make_report(paths['valid'], valid_pred, valid_data.y)
-  make_report(paths['test'], test_pred, test_data.y)
-  return (train_pred, valid_pred, test_pred)
-
-def load_report(env, name, role):
-  assert name in MODELS
-  paths = prepare(env, name, [role], remove=False)
-  filename = os.path.join(paths[role], 'report.json')
+def run_load_report(env, name, role):
+  filename = env.resolve_role_file(name, variant, 'train', 'report.json')
   return read_report(filename)

@@ -8,7 +8,7 @@ import pytest
 from sklearn.metrics import accuracy_score
 
 from digits.common import un_hot
-from digits.classifiers import train_and_test_model
+from digits.classifiers import run_train_model, run_test_model
 from digits.data import Env, Loader, prepare_cropped
 from digits.metrics import Metrics
 
@@ -28,7 +28,8 @@ def acc(actual, expected):
   return accuracy_score(un_hot(num_classes, actual), expected)
 
 def run_model(model):
-  train_pred, valid_pred, valid_pred2 = train_and_test_model(env, model, None, train_data, valid_data, valid_data)
+  train_pred, valid_pred = run_train_model(env, model, None, train_data, valid_data)
+  valid_pred2 = run_test_model(env, model, None, valid_data)
   np.testing.assert_array_equal(valid_pred, valid_pred2)
   metrics = Metrics(10, valid_pred, valid_data.y)
   report = metrics.report()

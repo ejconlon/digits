@@ -1,3 +1,18 @@
 TODO
 figure out tensorflow reporting
 baseline to k-NN
+
+
+Final product
+classification of street numbers
+to do that, a multi-stage pipeline
+
+1) scan over the image at a variety of scales for numbers
+2) maximal extent?
+3) detection in individual boxes
+
+
+workflow:
+command includes
+
+op args
