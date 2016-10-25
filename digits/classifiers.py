@@ -68,9 +68,9 @@ class TFModel(Model):
     graph = tf.Graph()
 
     with graph.as_default():
-      train_dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='train_dataset')
-      train_labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='train_labels')
-      valid_dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='valid_dataset')
+      dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='dataset')
+      labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
+      keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
       weights_shape = [self.num_features, self.num_classes]
 
@@ -81,12 +81,13 @@ class TFModel(Model):
       def predict(role, dataset):
         return tf.matmul(dataset, weights) + biases
 
-      logits = predict('train', train_dataset)
+      logits = predict('train', dataset)
       loss = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(logits, train_labels))
+        tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
-      train_prediction = tf.nn.softmax(logits, name='train_prediction')
-      valid_prediction = tf.nn.softmax(predict('valid', valid_dataset), name='valid_prediction')
+      prediction = tf.nn.softmax(logits, name='prediction')
+      #correct = tf.equal(tf.argmax(train_prediction, 1), tf.argmax(y, 1))
+      #accuracy = tf.reduce_mean(tf.cast(train_correct, tf.float32), name='accuracy')
 
       writer = tf.train.SummaryWriter(role_path)
       saver = tf.train.Saver()
@@ -95,22 +96,44 @@ class TFModel(Model):
 
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
-    alpha = 0.05
+
+    # Params
+    alpha = 0.001
+    training_iters = 200000
+    batch_size = 128
+    display_step = 10
+    dropout = 0.75 # keep_prob, 1.0 keep all
+
     graph, loss, saver, writer = self._graph()
+    train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
-      loss_summary = tf.scalar_summary("loss", loss)
+      loss_summary = tf.scalar_summary('loss', loss)
       writer.add_graph(graph)
       optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
-      feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(self.num_classes, train_data.y)}
-      act_opt_summary, act_loss_summary, train_pred = session.run([optimizer, loss_summary, 'train_prediction:0'], feed_dict=feed_dict)
-      # TODO don't summarize every step. also summarize test performance every so often
-      writer.add_summary(act_opt_summary, 0)
-      writer.add_summary(act_loss_summary, 0)
+
+      step = 0
+      offset = 0
+      num_examples = train_data.X.shape[0]
+
+      while step * batch_size < training_iters:
+        dataset = train_data.X[offset:offset+batch_size]
+        labels = train_labels[offset:offset+batch_size]
+        feed_dict = {'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': dropout}
+        act_opt_summary, act_loss_summary, train_pred = session.run([optimizer, loss_summary, 'prediction:0'], feed_dict=feed_dict)
+        if step % display_step == 0:
+          # TODO calculate accuracy too
+          print("step", step)
+          #writer.add_summary(act_opt_summary, step)
+          writer.add_summary(act_loss_summary, step)
+        offset += batch_size
+        offset %= num_examples
+        step += 1
 
       if valid_data is not None:
-        [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
+        valid_labels = one_hot(self.num_classes, valid_data.y)
+        [valid_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': valid_data.X, 'labels:0': valid_labels, 'keep_prob:0': 1.0})
       else:
         valid_pred = None
 
@@ -124,8 +147,9 @@ class TFModel(Model):
     with tf.Session(graph=graph) as session:
       new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
       new_saver.restore(session, ckpt_path)
-      raw_test_pred = graph.get_tensor_by_name('valid_prediction:0')
-      [test_pred] = session.run([raw_test_pred], feed_dict={'valid_dataset:0': test_data.X})
+      raw_test_pred = graph.get_tensor_by_name('prediction:0')
+      test_labels = one_hot(self.num_classes, test_data.y)
+      [test_pred] = session.run([raw_test_pred], feed_dict={'dataset:0': test_data.X, 'labels:0': test_labels, 'keep_prob:0': 1.0})
       return test_pred
 
 MODELS = {
