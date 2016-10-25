@@ -82,6 +82,7 @@ class TFModel(Model):
         return tf.matmul(dataset, weights) + biases
 
       logits = predict('train', dataset)
+      # TODO regularize!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
