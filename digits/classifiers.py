@@ -18,6 +18,9 @@ class Model(metaclass=ABCMeta):
     self.num_features = num_features
     self.num_classes = num_classes
 
+  def _model_name_plus(self):
+    return self.env.model_name_plus(self.name, self.variant)
+
   def _resolve_model(self, clean=False):
     return self.env.resolve_model(self.name, self.variant, clean)
 
@@ -61,14 +64,13 @@ class BaselineModel(Model):
 class TFModel(Model):
   def _graph(self):
     role_path = self._resolve_role('train')
+    parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
-      writer = tf.train.SummaryWriter(role_path)
-
       train_dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='train_dataset')
       train_labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='train_labels')
-      valid_dataset =  tf.placeholder(tf.float32, shape=[None, self.num_features], name='valid_dataset')
+      valid_dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='valid_dataset')
     
       weights_shape = [self.num_features, self.num_classes]
 
@@ -82,10 +84,11 @@ class TFModel(Model):
       logits = predict('train', train_dataset)
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, train_labels))
-    
+
       train_prediction = tf.nn.softmax(logits, name='train_prediction')
       valid_prediction = tf.nn.softmax(predict('valid', valid_dataset), name='valid_prediction')
 
+      writer = tf.train.SummaryWriter(role_path)
       saver = tf.train.Saver()
 
     return (graph, loss, saver, writer)
@@ -97,12 +100,14 @@ class TFModel(Model):
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
+      loss_summary = tf.scalar_summary("loss", loss)
       writer.add_graph(graph)
       optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
       feed_dict = {'train_dataset:0': train_data.X, 'train_labels:0': one_hot(self.num_classes, train_data.y)}
-      summary, train_loss, train_pred = session.run([optimizer, loss, 'train_prediction:0'], feed_dict=feed_dict)
+      act_opt_summary, act_loss_summary, train_pred = session.run([optimizer, loss_summary, 'train_prediction:0'], feed_dict=feed_dict)
       # TODO don't summarize every step. also summarize test performance every so often
-      writer.add_summary(summary, 0)
+      writer.add_summary(act_opt_summary, 0)
+      writer.add_summary(act_loss_summary, 0)
 
       [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
 

@@ -35,11 +35,13 @@ class Env:
       os.remove(p)
     return p
 
+  def model_name_plus(self, name, variant):
+    return name if variant is None else name + '_' + variant
+
   def resolve_model(self, name, variant, clean=False):
     assert '.' not in name and (variant is None or '.' not in variant)
     logs_path = self.resolve('logs')
-    name_plus = name if variant is None else name + '_' + variant
-    return self._mkdir(os.path.join(logs_path, name_plus), clean)
+    return self._mkdir(os.path.join(logs_path, self.model_name_plus(name, variant)), clean)
     
   def resolve_role(self, name, variant, role, clean=False):
     model_path = self.resolve_model(name, variant)
