@@ -20,7 +20,8 @@ def make_parser():
   train_parser.add_argument('--model', required=True)
   train_parser.add_argument('--variant')
   train_parser.add_argument('--train-data', required=True)
-  train_parser.add_argument('--valid-data', required=True)
+  train_parser.add_argument('--valid-data')
+  train_parser.add_argument('--test-data')
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
   test_parser.add_argument('--variant')
@@ -58,10 +59,21 @@ def write_results(env, args, role, orig, proc, pred):
 
 def train(env, loader, args):
   train_orig, train_proc = loader.load_data(args.train_data)
-  valid_orig, valid_proc = loader.load_data(args.valid_data)
+  if args.valid_data is not None:
+    valid_orig, valid_proc = loader.load_data(args.valid_data)
+  else:
+    valid_orig, valid_proc = None, None
+  if args.test_data is not None:
+    test_orig, test_proc = loader.load_data(args.test_data)
+  else:
+    test_orig, test_proc = None, None
   train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc)
   write_results(env, args, 'train', train_orig, train_proc, train_pred)
-  write_results(env, args, 'valid', valid_orig, valid_proc, valid_pred)
+  if args.valid_data is not None:
+    write_results(env, args, 'valid', valid_orig, valid_proc, valid_pred)
+  if args.test_data is not None:
+    test_pred = run_test_model(env, args.model, args.variant, test_proc)
+    write_results(env, args, 'test', test_orig, test_proc, test_pred)
 
 def test(env, loader, args):
   test_orig, test_proc = loader.load_data(args.test_data)

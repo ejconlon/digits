@@ -93,7 +93,7 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer)
 
-  def train(self, train_data, valid_data):
+  def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
     alpha = 0.05
     graph, loss, saver, writer = self._graph()
@@ -109,7 +109,10 @@ class TFModel(Model):
       writer.add_summary(act_opt_summary, 0)
       writer.add_summary(act_loss_summary, 0)
 
-      [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
+      if valid_data is not None:
+        [valid_pred] = session.run(['valid_prediction:0'], feed_dict={'valid_dataset:0': valid_data.X})
+      else:
+        valid_pred = None
 
       saver.save(session, ckpt_path)
 
