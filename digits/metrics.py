@@ -1,6 +1,8 @@
 from collections import namedtuple
+import pickle
 
 import numpy as np
+import pandas as pd
 import scipy.stats
 import sklearn.metrics
 import json_tricks.np
@@ -19,6 +21,13 @@ Report = namedtuple('Report', [
   'pred_class_dist'
 ])
 
+Viz = namedtuple('Viz', [
+  'correct_certain',
+  'wrong_certain',
+  'correct_uncertain',
+  'wrong_uncertain'
+])
+
 def write_report(report, filename):
   with open(filename, 'w') as f:
     json_tricks.np.dump(report._asdict(), f, sort_keys=True, indent=2)
@@ -26,6 +35,14 @@ def write_report(report, filename):
 def read_report(filename):
   with open(filename, 'r') as f:
     return Report(**json_tricks.np.load(f))
+
+# def write_viz(viz, filename):
+#   with open(filename, 'wb') as f:
+#     pickle.dump(viz, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+# def read_viz(filename):
+#   with open(filename, 'rb') as f:
+#     return pickle.load(f)
 
 class Metrics:
   def __init__(self, num_classes, pred_hot, gold):
@@ -91,3 +108,41 @@ class Metrics:
 
   def print_classification_report(self):
     print(sklearn.metrics.classification_report(self.gold, self.pred))
+
+  def viz(self, orig, proc, k):
+    correct = self.correct_indices()
+    correct_set = set(correct)
+    entropy = self.entropy()
+    certain = self.most_certain_indices(entropy)
+    uncertain = self.most_uncertain_indices(entropy)
+    indices = {
+      'correct_certain': [i for i in certain if i in correct_set][:k],
+      'wrong_certain': [i for i in certain if i not in correct_set][:k],
+      'correct_uncertain': [i for i in uncertain if i in correct_set][:k],
+      'wrong_uncertain': [i for i in uncertain if i not in correct_set][:k]
+    }
+    inv_map = proc.inv_map
+    if inv_map is None:
+      inv_map = list(range(proc.offset, proc.offset + len(proc.X)))
+    sets = {}
+    columns = ['gold_class', 'pred_class', 'p', 'entropy', 'orig_image', 'proc_image']
+    for k, v in indices.items():
+      recs = []
+      for i in v:
+        gold_class = self.gold[i]
+        assert proc.y[i] == gold_class
+        j = inv_map[i]
+        assert orig.y[j] == gold_class
+        pred_class = self.pred[i]
+        p = self.pred_hot[i][pred_class]
+        rec = {
+          'gold_class': gold_class,
+          'pred_class': pred_class,
+          'p': p,
+          'entropy': entropy[i],
+          'orig_image': orig.X[j],
+          'proc_image': proc.X[i]
+        }
+        recs.append(rec)
+      sets[k] = pd.DataFrame.from_records(recs, columns=columns)
+    return Viz(**sets)

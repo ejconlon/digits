@@ -33,6 +33,7 @@ def run_model(model):
   metrics = Metrics(10, valid_pred, valid_data.y)
   report = metrics.report()
   metrics.print_classification_report()
+  viz = metrics.viz(test, valid_data, 10)
 
 def test_baseline():
   run_model('baseline')
