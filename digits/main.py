@@ -32,6 +32,8 @@ def make_parser():
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
   report_parser.add_argument('--role', required=True)
+  summarize_parser = subparsers.add_parser('summarize')
+  summarize_parser.add_argument('--data', required=True)
   return parser
 
 def inspect(env, loader, args):
@@ -89,11 +91,19 @@ def report(env, loader, args):
   report = read_report(filename)
   pprint.pprint(report._asdict())
 
+def summarize(env, loader, args):
+  orig, proc = loader.load_data(args.data)
+  print('orig X', orig.X.shape)
+  print('orig y', orig.y.shape)
+  print('proc X', proc.X.shape)
+  print('proc y', proc.y.shape)
+
 OPS = {
   'inspect': inspect,
   'train': run_train,
   'test': run_test,
-  'report': report
+  'report': report,
+  'summarize': summarize
 }
 
 def main():
@@ -103,7 +113,6 @@ def main():
   loader.assert_ready()
   parser = make_parser()
   args = parser.parse_args()
-  write_args(env, args)
   OPS[args.op](env, loader, args)
 
 if __name__ == '__main__':
