@@ -17,23 +17,13 @@ command includes
 
 op args
 
-
-
-
-----
-post ideas
-"more data better than better algorithms"
-split your pipeline up
-there will be slow parts
-visualize long-running processes
-figure out where to divide work
-standardize metrics and criteria
-make sure you can still run it on one machine
-make it easy to explore results
-plan for heterogeneity
-types of testing
-- stable results
-- no crash
-- watermark
-- replay
-- controlled data
+Nice viz
+http://cs.stanford.edu/people/karpathy/convnetjs/demo/cifar10.html
+activation img
+weight img
+activation gradient img
+weight gradient img
+max activation/gradient
+number of parameters
+running avg of successes
+recent predictions including top 3 with p, and correct pred
