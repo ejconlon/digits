@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression
 import tensorflow as tf
 
 from .common import one_hot, product
-from .data import flat_gray
+from .data import flat_gray, gray
 
 class Model(metaclass=ABCMeta):
   def __init__(self, env, name, variant, num_classes):
@@ -110,7 +110,7 @@ def conv_net(dataset, weights, biases, dropout):
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, img_width, img_depth, num_classes):
   conv_layers = 2
-  feat0 = 8
+  feat0 = 16
   feat = lambda n: feat0 * (1 << n)
   c = img_width // (1 << conv_layers)
   unconn = c * c * feat(1)
@@ -163,26 +163,25 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries)
 
-  # Do nothing
   def preprocess(self, data):
-    return data
+    return gray(data)
 
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.0003
+    alpha = 0.001
     training_iters = 200000
-    batch_size = 128
+    batch_size = 256
     display_step = 10
-    dropout = 0.75 # keep_prob, 1.0 keep all
+    dropout = 0.90 # keep_prob, 1.0 keep all
 
     train_data = self.preprocess(train_data)
     assert len(train_data.X.shape) == 4
     img_width = train_data.X.shape[1]
     assert train_data.X.shape[2] == img_width
-    assert train_data.X.shape[3] == 3
-    graph, loss, saver, writer, summaries = self._graph(img_width, 3)
+    img_depth = train_data.X.shape[3]
+    graph, loss, saver, writer, summaries = self._graph(img_width, img_depth)
     train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:

@@ -220,3 +220,11 @@ def flat_gray(data):
   X = X.reshape((X.shape[0], product(X.shape[1:])))
   new_data = data._replace(X=X)
   return new_data
+
+def gray(data):
+  X = data.X
+  X = rgb2gray(X)
+  X = X.astype(np.float32)
+  X = X.reshape((X.shape[0], X.shape[1], X.shape[2], 1))
+  new_data = data._replace(X=X)
+  return new_data
