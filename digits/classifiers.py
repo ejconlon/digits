@@ -73,29 +73,79 @@ class BaselineModel(Model):
     test_pred = clf.predict(test_data.X)
     return one_hot(self.num_classes, test_pred)
 
+
+# Network definition from
+# https://github.com/aymericdamien/TensorFlow-Examples/blob/master/notebooks/3_NeuralNetworks/convolutional_network.ipynb
+def conv2d(x, W, b, strides=1):
+  x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+  x = tf.nn.bias_add(x, b)
+  return tf.nn.relu(x)
+
+def maxpool2d(x, k=2):
+  return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
+
+def conv_net(dataset, weights, biases, dropout):
+  # Convolution Layer
+  conv1 = conv2d(dataset, weights['wc1'], biases['bc1'])
+  # Max Pooling (down-sampling)
+  conv1 = maxpool2d(conv1, k=2)
+
+  # Convolution Layer
+  conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+  # Max Pooling (down-sampling)
+  conv2 = maxpool2d(conv2, k=2)
+
+  # Fully connected layer
+  # Reshape conv2 output to fit fully connected layer input
+  fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
+  fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
+  fc1 = tf.nn.relu(fc1)
+  # Apply Dropout
+  fc1 = tf.nn.dropout(fc1, dropout)
+
+  # Output, class prediction
+  out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+  return out
+
+# TODO these dimensions probably need massaging :(
+def cnn(dataset, dropout, img_width, img_depth, num_classes):
+  conv_layers = 2
+  feat0 = 8
+  feat = lambda n: feat0 * (1 << n)
+  c = img_width // (1 << conv_layers)
+  unconn = c * c * feat(1)
+  conn = 1024
+
+  weights = {
+    'wc1': tf.Variable(tf.random_normal([5, 5, img_depth, feat(0)])),
+    'wc2': tf.Variable(tf.random_normal([5, 5, feat(0), feat(1)])),
+    'wd1': tf.Variable(tf.random_normal([unconn, conn])),
+    'out': tf.Variable(tf.random_normal([conn, num_classes]))
+  }
+
+  biases = {
+    'bc1': tf.Variable(tf.random_normal([feat(0)])),
+    'bc2': tf.Variable(tf.random_normal([feat(1)])),
+    'bd1': tf.Variable(tf.random_normal([conn])),
+    'out': tf.Variable(tf.random_normal([num_classes]))
+  }
+
+  return conv_net(dataset, weights, biases, dropout)
+
 class TFModel(Model):
   # TODO num_features will be an image with with CNN
-  def _graph(self, num_features):
+  def _graph(self, img_width, img_depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
-      dataset = tf.placeholder(tf.float32, shape=[None, num_features], name='dataset')
+      dataset = tf.placeholder(tf.float32, shape=[None, img_width, img_width, img_depth], name='dataset')
       labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      weights_shape = [num_features, self.num_classes]
+      logits = cnn(dataset, keep_prob, img_width, img_depth, self.num_classes)
 
-      weights = tf.Variable(
-        tf.truncated_normal(weights_shape), name='weights')
-      biases = tf.Variable(tf.zeros([self.num_classes]), name='biases')
-
-      def predict(role, dataset):
-        return tf.matmul(dataset, weights) + biases
-
-      logits = predict('train', dataset)
-      # TODO regularize!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
@@ -113,25 +163,27 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries)
 
+  # Do nothing
   def preprocess(self, data):
-    return flat_gray(data)
+    return data
 
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.001
+    alpha = 0.0001
     training_iters = 200000
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
 
     train_data = self.preprocess(train_data)
-    assert len(train_data.X.shape) == 2
-    num_features = train_data.X.shape[1]
-    graph, loss, saver, writer, summaries = self._graph(num_features)
+    assert len(train_data.X.shape) == 4
+    img_width = train_data.X.shape[1]
+    assert train_data.X.shape[2] == img_width
+    assert train_data.X.shape[3] == 3
+    graph, loss, saver, writer, summaries = self._graph(img_width, 3)
     train_labels = one_hot(self.num_classes, train_data.y)
-    print('TRAIN X SHAPE', train_data.X.shape)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
@@ -160,7 +212,7 @@ class TFModel(Model):
       [train_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': 1.0})
 
       if valid_data is not None:
-        valid_data = flat_gray(valid_data)
+        valid_data = self.preprocess(valid_data)
         valid_labels = one_hot(self.num_classes, valid_data.y)
         print('predicting valid')
         [valid_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': valid_data.X, 'labels:0': valid_labels, 'keep_prob:0': 1.0})
@@ -179,7 +231,7 @@ class TFModel(Model):
       new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
       new_saver.restore(session, ckpt_path)
       raw_test_pred = graph.get_tensor_by_name('prediction:0')
-      test_data = flat_gray(test_data)
+      test_data = self.preprocess(test_data)
       test_labels = one_hot(self.num_classes, test_data.y)
       [test_pred] = session.run([raw_test_pred], feed_dict={'dataset:0': test_data.X, 'labels:0': test_labels, 'keep_prob:0': 1.0})
       return test_pred

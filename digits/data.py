@@ -214,11 +214,9 @@ def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_keep=None, r
   return Data(X=X, y=y, offset=offset, inv_map=inv_map)
 
 def flat_gray(data):
-  print("OLD SHAPE", data.X.shape)
   X = data.X
   X = rgb2gray(X)
   X = X.astype(np.float32)
   X = X.reshape((X.shape[0], product(X.shape[1:])))
   new_data = data._replace(X=X)
-  print("NEW SHAPE", new_data.X.shape)
   return new_data
