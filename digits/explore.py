@@ -33,18 +33,17 @@ def explore(env, model, variant, role):
   return Explorer(report=report, metrics=metrics, viz=viz)
 
 def img_tag(arr, mode=None):
-    img = Image.fromarray(arr, mode)
-    out = BytesIO()
-    img.save(out, format='png')
-    return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
+  img = Image.fromarray(arr, 'RGB')
+  out = BytesIO()
+  img.save(out, format='png')
+  return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
 
 def viz_table(tab):
   # need to disable truncation for this function because it will chop image tags :(
   old_width = pd.get_option('display.max_colwidth')
   pd.set_option('display.max_colwidth', -1)
   formatters = {
-    'orig_image': lambda arr: img_tag(arr, 'RGB'),
-    'proc_image': lambda arr: img_tag(arr, 'L')
+    'proc_image': lambda arr: img_tag(arr)
   }
   buf = StringIO()
   tab.to_html(buf, formatters=formatters, escape=False)

@@ -110,9 +110,9 @@ def conv_net(dataset, weights, biases, dropout):
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, img_width, img_depth, num_classes):
   # number of conv layers
-  num_conv = 2
+  num_conv = 3
   # number of fully connected layers
-  num_fc = 1
+  num_fc = 2
   # depth of initial conv
   feat0 = 16
   # width of fully connected layers
@@ -180,11 +180,11 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.001
+    alpha = 0.000001
     training_iters = 200000
-    batch_size = 256
+    batch_size = 128
     display_step = 10
-    dropout = 0.90 # keep_prob, 1.0 keep all
+    dropout = 1.0 # keep_prob, 1.0 keep all
 
     train_data = self.preprocess(train_data)
     assert len(train_data.X.shape) == 4
