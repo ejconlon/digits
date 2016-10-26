@@ -171,7 +171,7 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.0001
+    alpha = 0.0003
     training_iters = 200000
     batch_size = 128
     display_step = 10
@@ -208,23 +208,35 @@ class TFModel(Model):
         offset %= num_examples
         step += 1
 
-      print('predicting train')
-      [train_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': 1.0})
-
-      if valid_data is not None:
-        valid_data = self.preprocess(valid_data)
-        valid_labels = one_hot(self.num_classes, valid_data.y)
-        print('predicting valid')
-        [valid_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': valid_data.X, 'labels:0': valid_labels, 'keep_prob:0': 1.0})
-      else:
-        valid_pred = None
-
       print('saving')
       saver.save(session, ckpt_path)
+
+      def batch_pred(dataset, labels):
+        preds = []
+        offset = 0
+        while offset < len(dataset):
+          dataset_batch = dataset[offset:offset+batch_size]
+          labels_batch = labels[offset:offset+batch_size]
+          [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
+          preds.append(pred)
+          offset += batch_size
+        return np.concatenate(preds)
+
+      print('predicting train')
+      train_pred = batch_pred(train_data.X, train_labels)
+      
+      if valid_data is not None:
+        print('predicting valid')
+        valid_data = self.preprocess(valid_data)
+        valid_labels = one_hot(self.num_classes, valid_data.y)
+        valid_pred = batch_pred(valid_data.X, valid_labels)
+      else:
+        valid_pred = None
 
     return (train_pred, valid_pred)
 
   def test(self, test_data):
+    batch_size = 128
     ckpt_path = self._resolve_model_file('model.ckpt')
     graph = tf.Graph()
     with tf.Session(graph=graph) as session:
@@ -233,8 +245,17 @@ class TFModel(Model):
       raw_test_pred = graph.get_tensor_by_name('prediction:0')
       test_data = self.preprocess(test_data)
       test_labels = one_hot(self.num_classes, test_data.y)
-      [test_pred] = session.run([raw_test_pred], feed_dict={'dataset:0': test_data.X, 'labels:0': test_labels, 'keep_prob:0': 1.0})
-      return test_pred
+      def batch_pred(dataset, labels):
+        preds = []
+        offset = 0
+        while offset < len(dataset):
+          dataset_batch = dataset[offset:offset+batch_size]
+          labels_batch = labels[offset:offset+batch_size]
+          [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
+          preds.append(pred)
+          offset += batch_size
+        return np.concatenate(preds)
+      return batch_pred(test_data.X, test_labels)
 
 MODELS = {
   'baseline': BaselineModel,

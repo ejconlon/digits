@@ -58,6 +58,8 @@ def write_results(env, args, role, proc, pred):
   write_report(report, report_file)
   viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
+  print(env.model_name_plus(args.model, args.variant), '/', role)
+  metrics.print_classification_report()
 
 def run_train(env, loader, args):
   _, train_proc = loader.load_data(args.train_data, args.random_state)

@@ -49,4 +49,4 @@ def test_baseline():
   run_model('baseline', 'testing', 'crop-train-small', 'crop-test-small')
 
 def test_tf():
-  run_model('tf', 'testing', 'crop-train-small', 'crop-test-small')
+  run_model('tf', 'testing', 'crop-train-big', 'crop-test-big')
