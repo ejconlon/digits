@@ -109,28 +109,38 @@ def conv_net(dataset, weights, biases, dropout):
 
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, img_width, img_depth, num_classes):
-  conv_layers = 2
+  # number of conv layers
+  num_conv = 2
+  # number of fully connected layers
+  num_fc = 1
+  # depth of initial conv
   feat0 = 16
-  feat = lambda n: feat0 * (1 << n)
-  c = img_width // (1 << conv_layers)
-  unconn = c * c * feat(1)
-  conn = 1024
+  # width of fully connected layers
+  conn0 = 1024
 
-  weights = {
-    'wc1': tf.Variable(tf.random_normal([5, 5, img_depth, feat(0)])),
-    'wc2': tf.Variable(tf.random_normal([5, 5, feat(0), feat(1)])),
-    'wd1': tf.Variable(tf.random_normal([unconn, conn])),
-    'out': tf.Variable(tf.random_normal([conn, num_classes]))
-  }
+  feat = lambda n: feat0 * (1 << n) if n >= 0 else img_depth
+  c = img_width // (1 << num_conv)
+  unconn = c * c * feat(num_conv - 1)
+  conn = lambda n: conn0 if n >= 0 else unconn
 
-  biases = {
-    'bc1': tf.Variable(tf.random_normal([feat(0)])),
-    'bc2': tf.Variable(tf.random_normal([feat(1)])),
-    'bd1': tf.Variable(tf.random_normal([conn])),
-    'out': tf.Variable(tf.random_normal([num_classes]))
-  }
+  conv = dataset
+  for i in range(num_conv):
+    w = tf.Variable(tf.random_normal([5, 5, feat(i-1), feat(i)]))
+    b = tf.Variable(tf.random_normal([feat(i)]))
+    conv = maxpool2d(conv2d(conv, w, b), k=2)
 
-  return conv_net(dataset, weights, biases, dropout)
+  fc = tf.reshape(conv, [-1, unconn])
+  for i in range(num_fc):
+    w = tf.Variable(tf.random_normal([conn(i-1), conn(i)]))
+    b = tf.Variable(tf.random_normal([conn(i)]))
+    fc = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(fc, w), b)), dropout)
+
+  out_w = tf.Variable(tf.random_normal([conn(num_fc - 1), num_classes]))
+  out_b = tf.Variable(tf.random_normal([num_classes]))
+
+  out = tf.add(tf.matmul(fc, out_w), out_b)
+
+  return out
 
 class TFModel(Model):
   # TODO num_features will be an image with with CNN
