@@ -8,14 +8,14 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 import tensorflow as tf
 
-from .common import one_hot
+from .common import one_hot, product
+from .data import flat_gray
 
 class Model(metaclass=ABCMeta):
-  def __init__(self, env, name, variant, num_features, num_classes):
+  def __init__(self, env, name, variant, num_classes):
     self.env = env
     self.name = name
     self.variant = variant
-    self.num_features = num_features
     self.num_classes = num_classes
 
   def _model_name_plus(self):
@@ -34,6 +34,11 @@ class Model(metaclass=ABCMeta):
     return self.env.resolve_role_file(self.name, self.variant, role, filename, clean)
 
   @abstractmethod
+  def preprocess(self, data):
+    """ Preprocesses and flattens input data """
+    pass
+
+  @abstractmethod
   def train(self, train_data, valid_data):
     """ Return (one_hot preds, one_hot preds) """
     pass
@@ -44,35 +49,43 @@ class Model(metaclass=ABCMeta):
     pass
 
 class BaselineModel(Model):
+  def preprocess(self, data):
+    return flat_gray(data)
+
   def train(self, train_data, valid_data):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = LogisticRegression()
+    train_data = self.preprocess(train_data)
     clf.fit(train_data.X, train_data.y)
     with open(clf_file, 'wb') as f:
       pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
     train_pred = clf.predict(train_data.X)
-    valid_pred = clf.predict(valid_data.X)
+    if valid_data is not None:
+      valid_data = self.preprocess(valid_data)
+      valid_pred = clf.predict(valid_data.X)
     return (one_hot(self.num_classes, train_pred), one_hot(self.num_classes, valid_pred))
 
   def test(self, test_data):
     clf_file = self._resolve_model_file('model.clf')
     with open(clf_file, 'rb') as f:
       clf = pickle.load(f)
+    test_data = flat_gray(test_data)
     test_pred = clf.predict(test_data.X)
     return one_hot(self.num_classes, test_pred)
 
 class TFModel(Model):
-  def _graph(self):
+  # TODO num_features will be an image with with CNN
+  def _graph(self, num_features):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
-      dataset = tf.placeholder(tf.float32, shape=[None, self.num_features], name='dataset')
+      dataset = tf.placeholder(tf.float32, shape=[None, num_features], name='dataset')
       labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      weights_shape = [self.num_features, self.num_classes]
+      weights_shape = [num_features, self.num_classes]
 
       weights = tf.Variable(
         tf.truncated_normal(weights_shape), name='weights')
@@ -100,6 +113,9 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries)
 
+  def preprocess(self, data):
+    return flat_gray(data)
+
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
@@ -110,8 +126,12 @@ class TFModel(Model):
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
 
-    graph, loss, saver, writer, summaries = self._graph()
+    train_data = self.preprocess(train_data)
+    assert len(train_data.X.shape) == 2
+    num_features = train_data.X.shape[1]
+    graph, loss, saver, writer, summaries = self._graph(num_features)
     train_labels = one_hot(self.num_classes, train_data.y)
+    print('TRAIN X SHAPE', train_data.X.shape)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
@@ -140,6 +160,7 @@ class TFModel(Model):
       [train_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': train_data.X, 'labels:0': train_labels, 'keep_prob:0': 1.0})
 
       if valid_data is not None:
+        valid_data = flat_gray(valid_data)
         valid_labels = one_hot(self.num_classes, valid_data.y)
         print('predicting valid')
         [valid_pred] = session.run(['prediction:0'], feed_dict={'dataset:0': valid_data.X, 'labels:0': valid_labels, 'keep_prob:0': 1.0})
@@ -158,6 +179,7 @@ class TFModel(Model):
       new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
       new_saver.restore(session, ckpt_path)
       raw_test_pred = graph.get_tensor_by_name('prediction:0')
+      test_data = flat_gray(test_data)
       test_labels = one_hot(self.num_classes, test_data.y)
       [test_pred] = session.run([raw_test_pred], feed_dict={'dataset:0': test_data.X, 'labels:0': test_labels, 'keep_prob:0': 1.0})
       return test_pred
@@ -167,12 +189,13 @@ MODELS = {
   'tf': TFModel
 }
 
+# TODO take num_classes in both of these
 def run_train_model(env, name, variant, train_data, valid_data):
-  model = MODELS[name](env, name, variant, train_data.X.shape[1], 10)
+  model = MODELS[name](env, name, variant, 10)
   train_pred, valid_pred = model.train(train_data, valid_data)
   return (train_pred, valid_pred)
 
 def run_test_model(env, name, variant, test_data):
-  model = MODELS[name](env, name, variant, test_data.X.shape[1], 10)
+  model = MODELS[name](env, name, variant, 10)
   test_pred = model.test(test_data)
   return test_pred

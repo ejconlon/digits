@@ -22,10 +22,12 @@ def make_parser():
   train_parser.add_argument('--train-data', required=True)
   train_parser.add_argument('--valid-data')
   train_parser.add_argument('--test-data')
+  train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
   test_parser.add_argument('--variant')
   test_parser.add_argument('--test-data', required=True)
+  test_parser.add_argument('--random-state', type=int)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
@@ -46,7 +48,7 @@ def write_args(env, args):
   with open(args_file, 'w') as f:
     json.dump(vars(args), f, sort_keys=True, indent=2)
 
-def write_results(env, args, role, orig, proc, pred):
+def write_results(env, args, role, proc, pred):
   report_file = env.resolve_role_file(args.model, args.variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(args.model, args.variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(args.model, args.variant, role, 'viz.pickle', clean=True)
@@ -54,31 +56,31 @@ def write_results(env, args, role, orig, proc, pred):
   pickle_to(metrics, metrics_file)
   report = metrics.report()
   write_report(report, report_file)
-  viz = metrics.viz(orig, proc, (32, 32), 10)
+  viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
 
-def train(env, loader, args):
-  train_orig, train_proc = loader.load_data(args.train_data)
+def run_train(env, loader, args):
+  _, train_proc = loader.load_data(args.train_data, args.random_state)
   if args.valid_data is not None:
-    valid_orig, valid_proc = loader.load_data(args.valid_data)
+    _, valid_proc = loader.load_data(args.valid_data, args.random_state)
   else:
-    valid_orig, valid_proc = None, None
+    valid_proc = None
   if args.test_data is not None:
-    test_orig, test_proc = loader.load_data(args.test_data)
+    _, test_proc = loader.load_data(args.test_data, args.random_state)
   else:
-    test_orig, test_proc = None, None
+    test_proc = None
   train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc)
-  write_results(env, args, 'train', train_orig, train_proc, train_pred)
+  write_results(env, args, 'train', train_proc, train_pred)
   if args.valid_data is not None:
-    write_results(env, args, 'valid', valid_orig, valid_proc, valid_pred)
+    write_results(env, args, 'valid', valid_proc, valid_pred)
   if args.test_data is not None:
     test_pred = run_test_model(env, args.model, args.variant, test_proc)
-    write_results(env, args, 'test', test_orig, test_proc, test_pred)
+    write_results(env, args, 'test', test_proc, test_pred)
 
-def test(env, loader, args):
-  test_orig, test_proc = loader.load_data(args.test_data)
+def run_test(env, loader, args):
+  _, test_proc = loader.load_data(args.test_data, args.random_state)
   test_pred = run_test_model(env, args.model, args.variant, test_proc)
-  write_results(env, args, 'test', test_orig, test_proc, test_pred)
+  write_results(env, args, 'test', test_proc, test_pred)
 
 def report(env, loader, args):
   filename = env.resolve_role_file(args.model, args.variant, args.role, 'report.json')
@@ -87,8 +89,8 @@ def report(env, loader, args):
 
 OPS = {
   'inspect': inspect,
-  'train': train,
-  'test': test,
+  'train': run_train,
+  'test': run_test,
   'report': report
 }
 

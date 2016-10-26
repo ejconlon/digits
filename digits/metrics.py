@@ -109,7 +109,7 @@ class Metrics:
   def print_classification_report(self):
     print(sklearn.metrics.classification_report(self.gold, self.pred))
 
-  def viz(self, orig, proc, proc_shape, k):
+  def viz(self, proc, k):
     correct = self.correct_indices()
     correct_set = set(correct)
     entropy = self.entropy()
@@ -125,14 +125,12 @@ class Metrics:
     if inv_map is None:
       inv_map = list(range(proc.offset, proc.offset + len(proc.X)))
     sets = {}
-    columns = ['gold_class', 'pred_class', 'p', 'entropy', 'orig_image', 'proc_image']
+    columns = ['gold_class', 'pred_class', 'p', 'entropy', 'proc_image']
     for k, v in indices.items():
       recs = []
       for i in v:
         gold_class = self.gold[i]
         assert proc.y[i] == gold_class
-        j = inv_map[i]
-        assert orig.y[j] == gold_class
         pred_class = self.pred[i]
         p = self.pred_hot[i][pred_class]
         rec = {
@@ -140,8 +138,7 @@ class Metrics:
           'pred_class': pred_class,
           'p': p,
           'entropy': entropy[i],
-          'orig_image': orig.X[j],
-          'proc_image': np.rint(255*proc.X[i]).astype(np.uint8).reshape(proc_shape)
+          'proc_image': proc.X[i]
         }
         recs.append(rec)
       sets[k] = pd.DataFrame.from_records(recs, columns=columns)
