@@ -4,6 +4,7 @@ import os
 import pprint
 import sys
 
+from sklearn.datasets import fetch_mldata
 import tensorflow as tf
 
 from .data import Env, Loader
@@ -34,6 +35,7 @@ def make_parser():
   report_parser.add_argument('--role', required=True)
   summarize_parser = subparsers.add_parser('summarize')
   summarize_parser.add_argument('--data', required=True)
+  subparsers.add_parser('fetch_mnist')
   return parser
 
 def inspect(env, loader, args):
@@ -98,12 +100,17 @@ def summarize(env, loader, args):
   print('proc X', proc.X.shape)
   print('proc y', proc.y.shape)
 
+def fetch_mnist(env, loader, args):
+  data_home = env.resolve('data')
+  fetch_mldata('MNIST original', data_home=data_home)
+
 OPS = {
   'inspect': inspect,
   'train': run_train,
   'test': run_test,
   'report': report,
-  'summarize': summarize
+  'summarize': summarize,
+  'fetch_mnist': fetch_mnist
 }
 
 def main():

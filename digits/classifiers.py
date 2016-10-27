@@ -92,9 +92,11 @@ def cnn(dataset, dropout, width, depth, num_classes):
   # number of fully connected layers
   num_fc = 2
   # depth of initial conv
-  feat0 = 16
+  feat0 = 32
   # width of fully connected layers
   conn0 = 1024
+  # width of conv filter
+  conv_width = 5
 
   feat = lambda n: feat0 * (1 << n) if n >= 0 else depth
   c = width // (1 << num_conv)
@@ -103,7 +105,7 @@ def cnn(dataset, dropout, width, depth, num_classes):
 
   conv = dataset
   for i in range(num_conv):
-    w = tf.Variable(tf.random_normal([5, 5, feat(i-1), feat(i)]))
+    w = tf.Variable(tf.random_normal([conv_width, conv_width, feat(i-1), feat(i)]))
     b = tf.Variable(tf.random_normal([feat(i)]))
     conv = maxpool2d(conv2d(conv, w, b), k=2)
 
@@ -158,10 +160,10 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.00001
+    alpha = 0.0001
     training_iters = 400000
     batch_size = 128
-    display_step = 10
+    display_step = 50
     dropout = 0.75 # keep_prob, 1.0 keep all
 
     train_data = self.preprocess(train_data)
@@ -185,7 +187,7 @@ class TFModel(Model):
         if step % display_step == 0:
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
           display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-          print('step {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
+          print('seen {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
           writer.add_summary(display_summaries, step)
         step += 1
 
