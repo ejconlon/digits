@@ -7,12 +7,13 @@ import sys
 from sklearn.datasets import fetch_mldata
 import tensorflow as tf
 
-from .data import Env, Loader
+from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
 
 def make_parser():
   parser = argparse.ArgumentParser()
+  parser.add_argument('--random-state', type=int)
   subparsers = parser.add_subparsers(dest='op')
   inspect_parser = subparsers.add_parser('inspect')
   inspect_parser.add_argument('--model', required=True)
@@ -23,12 +24,10 @@ def make_parser():
   train_parser.add_argument('--train-data', required=True)
   train_parser.add_argument('--valid-data')
   train_parser.add_argument('--test-data')
-  train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
   test_parser.add_argument('--variant')
   test_parser.add_argument('--test-data', required=True)
-  test_parser.add_argument('--random-state', type=int)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
@@ -113,6 +112,9 @@ OPS = {
   'fetch_mnist': fetch_mnist
 }
 
+def sub_main(env, loader, args):
+  OPS[args.op](env, loader, args)
+
 def main():
   env = Env('.')
   env.assert_ready()
@@ -120,7 +122,7 @@ def main():
   loader.assert_ready()
   parser = make_parser()
   args = parser.parse_args()
-  OPS[args.op](env, loader, args)
+  sub_main(env, loader, args)
 
 if __name__ == '__main__':
   main()
