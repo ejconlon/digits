@@ -4,7 +4,7 @@ import operator
 import numpy as np
 
 def fildir(x):
-    return filter(lambda n: not n.startswith('__'), dir(x))
+    return [n for n in dir(x) if not n.startswith('__')]
 
 def product(x):
   return functools.reduce(operator.mul, x, 1)

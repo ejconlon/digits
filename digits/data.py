@@ -120,6 +120,14 @@ class Loader:
     else:
       with open(pickle_file, 'rb') as f:
         return pickle.load(f)
+
+  def read_mnist(self):
+    mat_file = os.path.join(self.data_path, 'mldata/mnist-original.mat')
+    mnist = loadmat(mat_file)
+    num = mnist['label'].shape[1]
+    y = mnist['label'].reshape((num,)).astype(np.int32)
+    X = np.moveaxis(mnist['data'], 1, 0).reshape((num, 28, 28))
+    return Data(X=X, y=y, offset=0, inv_map=None)
         
   # def raw_pickle_file(self, name):
   #   return os.path.join(self.pickled_path, name + self.pickle_suffix)
