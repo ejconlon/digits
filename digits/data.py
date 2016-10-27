@@ -1,6 +1,7 @@
 from collections import namedtuple
 import os
 import pickle
+import random
 
 import numpy as np
 from scipy.io import loadmat
@@ -160,24 +161,26 @@ class Loader:
 
 
 class RandomStateContext:
-  def __init__(self, new_state):
-    if new_state is None:
-      self.new_state = None
-    elif isinstance(new_state, int):
-      self.new_state = np.random.RandomState(new_state)
-    elif isinstance(new_state, np.random.RandomState):
-      self.new_state = new_state
-    else:
-      raise Exception('Unknown random state: ' + str(type(new_state)))
-    self.old_state = None
+  def __init__(self, seed):
+    if seed is not None:
+      assert isinstance(seed, int)
+    self.seed = seed
+    self.old_stdlib_state = None
+    self.old_numpy_state = None
   def __enter__(self):
-    if self.new_state is not None:
-      self.old_state = np.random.get_state()
-      np.random.set_state(self.new_state.get_state())
+    if self.seed is not None:
+      self.old_stdlib_state = random.getstate()
+      random.seed(self.seed)
+      self.old_numpy_state = np.random.get_state()
+      new_numpy_state = np.random.RandomState(self.seed)
+      np.random.set_state(new_numpy_state.get_state())
   def __exit__(self, *args):
-    if self.old_state is not None:
-      np.random.set_state(self.old_state)
-      self.old_state = None
+    if self.old_stdlib_state is not None:
+      random.setstate(self.old_stdlib_state)
+      self.old_stdlib_state = None
+    if self.old_numpy_state is not None:
+      np.random.set_state(self.old_numpy_state)
+      self.old_numpy_state = None
 
 
 # TODO consider distribution across all classes

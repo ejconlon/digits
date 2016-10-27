@@ -2,11 +2,16 @@ from base64 import b64encode
 from collections import namedtuple
 from io import BytesIO, StringIO
 import os
+import warnings
 
+from IPython.core.display import HTML, display
+import numpy as np
 import pandas as pd
 from PIL import Image
+import skimage
 
 from .metrics import read_report, unpickle_from
+from .images import img_effect
 
 Explorer = namedtuple('Explorer', [
   'report',
@@ -32,7 +37,16 @@ def explore(env, model, variant, role):
     viz = None
   return Explorer(report=report, metrics=metrics, viz=viz)
 
+# show image or array of them in ipython
+def img_show(arr):
+  img_effect(lambda x: display(HTML(img_tag(x))), arr)  
+
+# Given a single image, return a tag
 def img_tag(arr):
+  if arr.dtype != np.uint8:
+    with warnings.catch_warnings():
+      warnings.simplefilter("ignore")
+      arr = skimage.img_as_ubyte(arr)
   if len(arr.shape) == 2:
     mode = 'L'
   elif len(arr.shape) == 3:
