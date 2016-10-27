@@ -10,6 +10,7 @@ import tensorflow as tf
 
 from .common import one_hot, product
 from .data import flat_gray, gray
+from .images import img_select, img_rando, img_prepare_all, img_width, img_depth
 
 class Model(metaclass=ABCMeta):
   def __init__(self, env, name, variant, num_classes):
@@ -39,7 +40,7 @@ class Model(metaclass=ABCMeta):
     pass
 
   @abstractmethod
-  def train(self, train_data, valid_data=None, augment=None):
+  def train(self, train_data, valid_data=None):
     """ Return (one_hot preds, one_hot preds) """
     pass
 
@@ -52,7 +53,7 @@ class BaselineModel(Model):
   def preprocess(self, data):
     return flat_gray(data)
 
-  def train(self, train_data, valid_data=None, augment=None):
+  def train(self, train_data, valid_data=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = LogisticRegression()
     train_data = self.preprocess(train_data)
@@ -85,7 +86,7 @@ def maxpool2d(x, k=2):
   return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
 # TODO these dimensions probably need massaging :(
-def cnn(dataset, dropout, img_width, img_depth, num_classes):
+def cnn(dataset, dropout, width, depth, num_classes):
   # number of conv layers
   num_conv = 3
   # number of fully connected layers
@@ -95,8 +96,8 @@ def cnn(dataset, dropout, img_width, img_depth, num_classes):
   # width of fully connected layers
   conn0 = 1024
 
-  feat = lambda n: feat0 * (1 << n) if n >= 0 else img_depth
-  c = img_width // (1 << num_conv)
+  feat = lambda n: feat0 * (1 << n) if n >= 0 else depth
+  c = width // (1 << num_conv)
   unconn = c * c * feat(num_conv - 1)
   conn = lambda n: conn0 if n >= 0 else unconn
 
@@ -120,17 +121,17 @@ def cnn(dataset, dropout, img_width, img_depth, num_classes):
   return out
 
 class TFModel(Model):
-  def _graph(self, img_width, img_depth):
+  def _graph(self, width, depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
-      dataset = tf.placeholder(tf.float32, shape=[None, img_width, img_width, img_depth], name='dataset')
+      dataset = tf.placeholder(tf.float32, shape=[None, width, width, depth], name='dataset')
       labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      logits = cnn(dataset, keep_prob, img_width, img_depth, self.num_classes)
+      logits = cnn(dataset, keep_prob, width, depth, self.num_classes)
 
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels))
@@ -150,24 +151,23 @@ class TFModel(Model):
     return (graph, loss, saver, writer, summaries)
 
   def preprocess(self, data):
-    return gray(data)
+    X = img_prepare_all(data.X)
+    return data._replace(X=X)
 
-  def train(self, train_data, valid_data=None, augment=None):
+  def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.000001
-    training_iters = 200000
+    alpha = 0.00001
+    training_iters = 400000
     batch_size = 128
     display_step = 10
-    dropout = 1.0 # keep_prob, 1.0 keep all
+    dropout = 0.75 # keep_prob, 1.0 keep all
 
     train_data = self.preprocess(train_data)
-    assert len(train_data.X.shape) == 4
-    img_width = train_data.X.shape[1]
-    assert train_data.X.shape[2] == img_width
-    img_depth = train_data.X.shape[3]
-    graph, loss, saver, writer, summaries = self._graph(img_width, img_depth)
+    width = img_width(train_data.X)
+    depth = img_depth(train_data.X)
+    graph, loss, saver, writer, summaries = self._graph(width, depth)
     train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
@@ -176,14 +176,10 @@ class TFModel(Model):
       optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
 
       step = 0
-      offset = 0
       num_examples = train_data.X.shape[0]
 
       while step * batch_size < training_iters:
-        dataset = train_data.X[offset:offset+batch_size]
-        labels = train_labels[offset:offset+batch_size]
-        if augment is not None:
-          dataset = augment(dataset)
+        dataset, labels = img_select(train_data.X, train_labels, batch_size, img_rando)
         feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
         session.run([optimizer], feed_dict=feed_dict)
         if step % display_step == 0:
@@ -191,8 +187,6 @@ class TFModel(Model):
           display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
           print('step {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
           writer.add_summary(display_summaries, step)
-        offset += batch_size
-        offset %= num_examples
         step += 1
 
       print('saving')

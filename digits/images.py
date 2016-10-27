@@ -49,6 +49,12 @@ def img_map(f, arr):
   else:
     return np.stack([f(arr[i]) for i in range(arr.shape[0])])
 
+def img_map_id(f, arr):
+  out = np.empty(arr.shape)
+  for i in range(arr.shape[0]):
+    f(arr[i], out[i])
+  return out
+
 # apply a function for side effects
 def img_effect(f, arr):
   if is_single_img(arr):
@@ -85,31 +91,58 @@ def img_rando(img, s=DEFAULT_S, r=DEFAULT_R, t=DEFAULT_T, i=DEFAULT_I):
     warped = 1.0 - warped
   return warped
 
-def img_augment(img):
-  width = img_width(img)
+def img_contrast(img, out, selem, p):
+  return skimage.filters.rank.enhance_contrast_percentile(img, out=out, selem=selem, p0=p, p1=1.0-p)
+
+def img_contrast_all(arr):
   p = 0.2
-  e = 0
   c = 3
-  m = np.ones(img.shape)
-  m[:, 0:e] = 0
-  m[:, width-e:] = 0
+  selem = skimage.morphology.square(c)  
   with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    img = img_rando(img)
-    img = skimage.img_as_uint(img)
-    selem = skimage.morphology.square(c)
-    img = skimage.filters.rank.enhance_contrast_percentile(img, selem=selem, mask=m, p0=p, p1=1.0-p)
-    #img = skimage.filters.rank.otsu(img, selem=selem)
-    #img = skimage.exposure.equalize_adapthist(img, kernel_size=11)
-    img = skimage.img_as_float(img)
-    return img
+    return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
+
+def img_prepare_all(arr):
+  arr = skimage.color.rgb2gray(arr)
+  gray_shape = list(arr.shape)
+  gray_shape.append(1)
+  #arr = img_contrast_all(arr)
+  arr = arr.reshape(gray_shape)
+  return arr
+
+# def img_augment(img):
+#   width = img_width(img)
+#   p = 0.2
+#   e = 0
+#   c = 3
+#   m = np.ones(img.shape)
+#   m[:, 0:e] = 0
+#   m[:, width-e:] = 0
+#   with warnings.catch_warnings():
+#     warnings.simplefilter("ignore")
+#     img = img_rando(img)
+#     img = skimage.img_as_uint(img)
+#     selem = skimage.morphology.square(c)
+#     img = skimage.filters.rank.enhance_contrast_percentile(img, selem=selem, mask=m, p0=p, p1=1.0-p)
+#     #img = skimage.filters.rank.otsu(img, selem=selem)
+#     #img = skimage.exposure.equalize_adapthist(img, kernel_size=11)
+#     img = skimage.img_as_float(img)
+#     return img
 
 def img_select(X, y, batch_size, augment=None):
   assert X.shape[0] == y.shape[0]
   lim = X.shape[0]
-  indices = [random.randint(0, lim-1) for i in range(batch_size)]
-  Xb = X[indices]
-  if augment is not None:
-    Xb = img_map(augment, Xb)
-  yb = y[indices]
+  Xb_shape = list(X.shape)
+  Xb_shape[0] = batch_size
+  Xb = np.empty(Xb_shape)
+  yb_shape = list(y.shape)
+  yb_shape[0] = batch_size
+  yb = np.empty(yb_shape)
+  for i in range(batch_size):
+    index = random.randint(0, lim-1)
+    if augment is None:
+      Xb[i] = X[index]
+    else:
+      Xb[i] = augment(X[index])
+    yb[i] = y[index]
   return (Xb, yb)
