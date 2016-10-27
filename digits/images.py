@@ -134,10 +134,10 @@ def img_select(X, y, batch_size, augment=None):
   lim = X.shape[0]
   Xb_shape = list(X.shape)
   Xb_shape[0] = batch_size
-  Xb = np.empty(Xb_shape)
+  Xb = np.empty(Xb_shape, dtype=X.dtype)
   yb_shape = list(y.shape)
   yb_shape[0] = batch_size
-  yb = np.empty(yb_shape)
+  yb = np.empty(yb_shape, dtype=y.dtype)
   for i in range(batch_size):
     index = random.randint(0, lim-1)
     if augment is None:
