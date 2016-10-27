@@ -39,7 +39,7 @@ class Model(metaclass=ABCMeta):
     pass
 
   @abstractmethod
-  def train(self, train_data, valid_data):
+  def train(self, train_data, valid_data=None, augment=None):
     """ Return (one_hot preds, one_hot preds) """
     pass
 
@@ -52,7 +52,7 @@ class BaselineModel(Model):
   def preprocess(self, data):
     return flat_gray(data)
 
-  def train(self, train_data, valid_data):
+  def train(self, train_data, valid_data=None, augment=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = LogisticRegression()
     train_data = self.preprocess(train_data)
@@ -74,7 +74,7 @@ class BaselineModel(Model):
     return one_hot(self.num_classes, test_pred)
 
 
-# Network definition from
+# conv2d/maxpool2d definition from
 # https://github.com/aymericdamien/TensorFlow-Examples/blob/master/notebooks/3_NeuralNetworks/convolutional_network.ipynb
 def conv2d(x, W, b, strides=1):
   x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
@@ -83,29 +83,6 @@ def conv2d(x, W, b, strides=1):
 
 def maxpool2d(x, k=2):
   return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
-
-def conv_net(dataset, weights, biases, dropout):
-  # Convolution Layer
-  conv1 = conv2d(dataset, weights['wc1'], biases['bc1'])
-  # Max Pooling (down-sampling)
-  conv1 = maxpool2d(conv1, k=2)
-
-  # Convolution Layer
-  conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
-  # Max Pooling (down-sampling)
-  conv2 = maxpool2d(conv2, k=2)
-
-  # Fully connected layer
-  # Reshape conv2 output to fit fully connected layer input
-  fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
-  fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
-  fc1 = tf.nn.relu(fc1)
-  # Apply Dropout
-  fc1 = tf.nn.dropout(fc1, dropout)
-
-  # Output, class prediction
-  out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
-  return out
 
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, img_width, img_depth, num_classes):
@@ -143,7 +120,6 @@ def cnn(dataset, dropout, img_width, img_depth, num_classes):
   return out
 
 class TFModel(Model):
-  # TODO num_features will be an image with with CNN
   def _graph(self, img_width, img_depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
@@ -176,7 +152,7 @@ class TFModel(Model):
   def preprocess(self, data):
     return gray(data)
 
-  def train(self, train_data, valid_data=None):
+  def train(self, train_data, valid_data=None, augment=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
@@ -206,6 +182,8 @@ class TFModel(Model):
       while step * batch_size < training_iters:
         dataset = train_data.X[offset:offset+batch_size]
         labels = train_labels[offset:offset+batch_size]
+        if augment is not None:
+          dataset = augment(dataset)
         feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
         session.run([optimizer], feed_dict=feed_dict)
         if step % display_step == 0:

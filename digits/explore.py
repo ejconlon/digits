@@ -32,8 +32,20 @@ def explore(env, model, variant, role):
     viz = None
   return Explorer(report=report, metrics=metrics, viz=viz)
 
-def img_tag(arr, mode=None):
-  img = Image.fromarray(arr, 'RGB')
+def img_tag(arr):
+  if len(arr.shape) == 2:
+    mode = 'L'
+  elif len(arr.shape) == 3:
+    if arr.shape[2] == 3:
+      mode = 'RGB'
+    elif arr.shape[2] == 1:
+      mode = 'L'
+      arr = arr.reshape(arr.shape[:2])
+    else:
+      raise Exception('Invalid depth', arr.shape[2])
+  else:
+    raise Exception('Invalid shape', arr.shape)
+  img = Image.fromarray(arr, mode)
   out = BytesIO()
   img.save(out, format='png')
   return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
