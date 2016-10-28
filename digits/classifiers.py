@@ -87,11 +87,13 @@ def maxpool2d(x, k=2):
 
 def cnn(dataset, dropout, width, depth, num_classes):
   # (width, depth) of initial conv
-  convs = [(5, 32), (5, 64)] # mnist
-  # convs = [(5, 64), (5, 128), (5, 256)] # crop
+  # convs = [(5, 32), (5, 64)] # mnist
+  convs = [(5, 32), (5, 128), (5, 512)] # crop
+  # convs = [(5, 16), (7, 512)] # yann
   # width of fully connected layers
-  fcs = [1024] # mnist
-  # fcs = [1024] # crop
+  # fcs = [1024] # mnist
+  fcs = [1024] # crop
+  # fcs = [20] # yann
 
   num_conv = len(convs)
   num_fc = len(fcs)
@@ -174,7 +176,7 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    lam =  0.0001 # regularization param... tune
+    lam =  0.00000001 # regularization param 0.0001 for mnist
     alpha = 0.001  # 0.001 for mnist
     training_iters = 200000  # 200k for mnist
     batch_size = 128

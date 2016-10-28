@@ -68,5 +68,8 @@ def test_baseline_mnist():
 #def test_tf_crop():
 #  run_model('tf', 'crop', 'crop-train-big', 'crop-test-big')
 
-def test_tf_mnist():
-  run_model('tf', 'mnist', 'mnist-train', 'mnist-test')
+def test_tf_crop_small():
+  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small')
+
+#def test_tf_mnist():
+#  run_model('tf', 'mnist', 'mnist-train', 'mnist-test')

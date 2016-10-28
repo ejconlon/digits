@@ -104,7 +104,8 @@ def img_gray_contrast_all(arr):
 
 def img_color_contrast_all(arr):
   c = 7
-  return img_map(lambda img: skimage.exposure.equalize_adapthist(img, kernel_size=c), arr)
+  fn = lambda img: skimage.exposure.equalize_hist(skimage.exposure.equalize_adapthist(img, kernel_size=c))
+  return img_map(fn, arr)
 
 def img_prepare_all(arr):
   if len(arr.shape) == 3:
