@@ -63,6 +63,7 @@ def write_results(env, args, role, proc, pred):
   viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
   print(env.model_name_plus(args.model, args.variant), '/', role)
+  print('accuracy', metrics.accuracy())
   metrics.print_classification_report()
 
 def run_train(env, loader, args):

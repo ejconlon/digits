@@ -94,7 +94,7 @@ def img_rando(img, s=DEFAULT_S, r=DEFAULT_R, t=DEFAULT_T, i=DEFAULT_I):
 def img_contrast(img, out, selem, p):
   return skimage.filters.rank.enhance_contrast_percentile(img, out=out, selem=selem, p0=p, p1=1.0-p)
 
-def img_contrast_all(arr):
+def img_gray_contrast_all(arr):
   p = 0.2
   c = 3
   selem = skimage.morphology.square(c)  
@@ -102,17 +102,23 @@ def img_contrast_all(arr):
     warnings.simplefilter("ignore")
     return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
 
+def img_color_contrast_all(arr):
+  c = 7
+  return img_map(lambda img: skimage.exposure.equalize_adapthist(img, kernel_size=c), arr)
+
 def img_prepare_all(arr):
   if len(arr.shape) == 3:
+    # gray (mnist)
     arr = skimage.img_as_float(arr)
+    gray_shape = list(arr.shape)
+    gray_shape.append(1)
+    arr = arr.reshape(gray_shape)
+    return arr
   else:
+    # color (svhn)
     assert len(arr.shape) == 4
-    arr = skimage.color.rgb2gray(arr)
-  assert len(arr.shape) == 3
-  gray_shape = list(arr.shape)
-  gray_shape.append(1)
-  #arr = img_contrast_all(arr)
-  arr = arr.reshape(gray_shape)
+    arr = img_color_contrast_all(arr)  # not necessary for mnist
+    arr = skimage.img_as_float(arr)
   return arr
 
 def img_select(X, y, batch_size, augment=None):

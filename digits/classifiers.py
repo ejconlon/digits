@@ -87,36 +87,40 @@ def maxpool2d(x, k=2):
 
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, width, depth, num_classes):
-  # number of conv layers
-  num_conv = 2
-  # number of fully connected layers
-  num_fc = 1
-  # depth of initial conv
-  feat0 = 32
+  # (width, depth) of initial conv
+  # convs = [(5, 32), (5, 64)] # mnist
+  convs = [(5, 32), (5, 64)] # crop
   # width of fully connected layers
-  conn0 = 1024
-  # width of conv filter
-  conv_width = 5
+  # fcs = [1024] # mnist
+  fcs = [1024] # crop
 
-  feat = lambda n: feat0 * (1 << n) if n >= 0 else depth
+  num_conv = len(convs)
+  num_fc = len(fcs)
+
+  # calculate conv/fv size
+  # width must be evenly divisible by 2**num_conv
+  # because we do 2-pooling after every round
   c = width // (1 << num_conv)
   assert c * (1 << num_conv) == width
-  unconn = c * c * feat(num_conv - 1)
-  conn = lambda n: conn0 if n >= 0 else unconn
+  unconn = c * c * convs[-1][1]
 
   conv = dataset
-  for i in range(num_conv):
-    w = tf.Variable(tf.random_normal([conv_width, conv_width, feat(i-1), feat(i)]))
-    b = tf.Variable(tf.random_normal([feat(i)]))
+  last_depth = depth
+  for (conv_width, conv_depth) in convs:
+    w = tf.Variable(tf.random_normal([conv_width, conv_width, last_depth, conv_depth]))
+    b = tf.Variable(tf.random_normal([conv_depth]))
     conv = maxpool2d(conv2d(conv, w, b), k=2)
+    last_depth = conv_depth
 
   fc = tf.reshape(conv, [-1, unconn])
-  for i in range(num_fc):
-    w = tf.Variable(tf.random_normal([conn(i-1), conn(i)]))
-    b = tf.Variable(tf.random_normal([conn(i)]))
+  last_conn = unconn
+  for conn in fcs:
+    w = tf.Variable(tf.random_normal([last_conn, conn]))
+    b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(fc, w), b)), dropout)
+    last_conn = conn
 
-  out_w = tf.Variable(tf.random_normal([conn(num_fc - 1), num_classes]))
+  out_w = tf.Variable(tf.random_normal([last_conn, num_classes]))
   out_b = tf.Variable(tf.random_normal([num_classes]))
 
   out = tf.add(tf.matmul(fc, out_w), out_b)
@@ -163,12 +167,12 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.001
-    training_iters = 200000
+    alpha = 0.001  # 0.001 for mnist
+    training_iters = 200000  # 200k for mnist
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
-    inv_prob = 0.5
+    inv_prob = 0.0  # 0 for mnist, 0 for crop
 
     rando = lambda img: img_rando(img, i=inv_prob)
     
