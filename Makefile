@@ -16,7 +16,7 @@ test:
 	py.test tests
 
 test-verbose:
-	py.test -s tests
+	py.test -s tests --fulltrace
 
 tensorboard:
 	python -m tensorflow.tensorboard --logdir=logs/

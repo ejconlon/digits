@@ -85,14 +85,13 @@ def conv2d(x, W, b, strides=1):
 def maxpool2d(x, k=2):
   return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-# TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, width, depth, num_classes):
   # (width, depth) of initial conv
-  # convs = [(5, 32), (5, 64)] # mnist
-  convs = [(5, 64), (5, 128), (5, 256)] # crop
+  convs = [(5, 32), (5, 64)] # mnist
+  # convs = [(5, 64), (5, 128), (5, 256)] # crop
   # width of fully connected layers
-  # fcs = [1024] # mnist
-  fcs = [1024] # crop
+  fcs = [1024] # mnist
+  # fcs = [1024] # crop
 
   num_conv = len(convs)
   num_fc = len(fcs)
@@ -104,6 +103,9 @@ def cnn(dataset, dropout, width, depth, num_classes):
   assert c * (1 << num_conv) == width
   unconn = c * c * convs[-1][1]
 
+  conv_weights = []
+  fc_weights = []
+
   conv = dataset
   last_depth = depth
   for (conv_width, conv_depth) in convs:
@@ -111,6 +113,7 @@ def cnn(dataset, dropout, width, depth, num_classes):
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = maxpool2d(conv2d(conv, w, b), k=2)
     last_depth = conv_depth
+    conv_weights.append(w)
 
   fc = tf.reshape(conv, [-1, unconn])
   last_conn = unconn
@@ -119,16 +122,17 @@ def cnn(dataset, dropout, width, depth, num_classes):
     b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(fc, w), b)), dropout)
     last_conn = conn
+    fc_weights.append(w)
 
   out_w = tf.Variable(tf.random_normal([last_conn, num_classes]))
   out_b = tf.Variable(tf.random_normal([num_classes]))
 
   out = tf.add(tf.matmul(fc, out_w), out_b)
 
-  return out
+  return (out, conv_weights, fc_weights)
 
 class TFModel(Model):
-  def _graph(self, alpha, width, depth):
+  def _graph(self, lam, alpha, width, depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
@@ -138,10 +142,13 @@ class TFModel(Model):
       labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      logits = cnn(dataset, keep_prob, width, depth, self.num_classes)
+      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, width, depth, self.num_classes)
+
+      reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
+            sum(tf.nn.l2_loss(w) for w in fc_weights)
 
       loss = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(logits, labels))
+        tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + lam * reg
 
       optimizer = tf.train.AdamOptimizer(learning_rate=alpha).minimize(loss)
 
@@ -167,19 +174,20 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
+    lam =  0.0001 # regularization param... tune
     alpha = 0.001  # 0.001 for mnist
     training_iters = 200000  # 200k for mnist
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
-    inv_prob = 0.0  # 0 for mnist, 0 for crop
 
-    rando = lambda img: img_rando(img, i=inv_prob)
+    # you can tune rando params if you want
+    rando = img_rando
     
     train_data = self.preprocess(train_data)
     width = img_width(train_data.X)
     depth = img_depth(train_data.X)
-    graph, loss, saver, writer, summaries, optimizer = self._graph(alpha, width, depth)
+    graph, loss, saver, writer, summaries, optimizer = self._graph(lam, alpha, width, depth)
     train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:

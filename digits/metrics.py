@@ -125,7 +125,7 @@ class Metrics:
     if inv_map is None:
       inv_map = list(range(proc.offset, proc.offset + len(proc.X)))
     sets = {}
-    columns = ['gold_class', 'pred_class', 'p', 'entropy', 'proc_image']
+    columns = ['index', 'gold_class', 'pred_class', 'p', 'entropy', 'proc_image']
     for k, v in indices.items():
       recs = []
       for i in v:
@@ -134,6 +134,7 @@ class Metrics:
         pred_class = self.pred[i]
         p = self.pred_hot[i][pred_class]
         rec = {
+          'index': i,
           'gold_class': gold_class,
           'pred_class': pred_class,
           'p': p,

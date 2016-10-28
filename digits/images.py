@@ -12,7 +12,7 @@ from .common import product
 DEFAULT_S=1.03
 DEFAULT_R=0.15
 DEFAULT_T=1.5
-DEFAULT_I=0.5
+DEFAULT_I=0.0
 
 def img_width(arr):
   if is_single_img(arr):
