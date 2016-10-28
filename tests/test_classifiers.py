@@ -59,8 +59,14 @@ def run_model(model, variant, train_data_name, test_data_name):
   # Now check that we've correctly predicted with the serialized model
   np.testing.assert_array_equal(valid_metrics.pred, test_metrics.pred)
 
-def test_baseline():
-  run_model('baseline', 'testing', 'crop-train-small', 'crop-test-small')
+def test_baseline_crop():
+  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small')
 
-#def test_tf():
-#  run_model('tf', 'testing', 'crop-train-small', 'crop-test-small')
+def test_baseline_mnist():
+  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test')
+
+#def test_tf_crop():
+#  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small')
+
+def test_tf_mnist():
+  run_model('tf', 'mnist', 'mnist-train', 'mnist-test')

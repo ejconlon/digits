@@ -88,7 +88,7 @@ def maxpool2d(x, k=2):
 # TODO these dimensions probably need massaging :(
 def cnn(dataset, dropout, width, depth, num_classes):
   # number of conv layers
-  num_conv = 3
+  num_conv = 2
   # number of fully connected layers
   num_fc = 2
   # depth of initial conv
@@ -100,6 +100,7 @@ def cnn(dataset, dropout, width, depth, num_classes):
 
   feat = lambda n: feat0 * (1 << n) if n >= 0 else depth
   c = width // (1 << num_conv)
+  assert c * (1 << num_conv) == width
   unconn = c * c * feat(num_conv - 1)
   conn = lambda n: conn0 if n >= 0 else unconn
 
@@ -163,8 +164,11 @@ class TFModel(Model):
     alpha = 0.0001
     training_iters = 400000
     batch_size = 128
-    display_step = 50
+    display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
+    inv_prob = 0.0
+
+    rando = lambda img: img_rando(img, i=inv_prob)
 
     train_data = self.preprocess(train_data)
     width = img_width(train_data.X)
@@ -181,7 +185,7 @@ class TFModel(Model):
       num_examples = train_data.X.shape[0]
 
       while step * batch_size < training_iters:
-        dataset, labels = img_select(train_data.X, train_labels, batch_size, img_rando)
+        dataset, labels = img_select(train_data.X, train_labels, batch_size, rando)
         feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
         session.run([optimizer], feed_dict=feed_dict)
         if step % display_step == 0:

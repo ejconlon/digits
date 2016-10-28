@@ -103,31 +103,17 @@ def img_contrast_all(arr):
     return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
 
 def img_prepare_all(arr):
-  arr = skimage.color.rgb2gray(arr)
+  if len(arr.shape) == 3:
+    arr = skimage.img_as_float(arr)
+  else:
+    assert len(arr.shape) == 4
+    arr = skimage.color.rgb2gray(arr)
+  assert len(arr.shape) == 3
   gray_shape = list(arr.shape)
   gray_shape.append(1)
   #arr = img_contrast_all(arr)
   arr = arr.reshape(gray_shape)
   return arr
-
-# def img_augment(img):
-#   width = img_width(img)
-#   p = 0.2
-#   e = 0
-#   c = 3
-#   m = np.ones(img.shape)
-#   m[:, 0:e] = 0
-#   m[:, width-e:] = 0
-#   with warnings.catch_warnings():
-#     warnings.simplefilter("ignore")
-#     img = img_rando(img)
-#     img = skimage.img_as_uint(img)
-#     selem = skimage.morphology.square(c)
-#     img = skimage.filters.rank.enhance_contrast_percentile(img, selem=selem, mask=m, p0=p, p1=1.0-p)
-#     #img = skimage.filters.rank.otsu(img, selem=selem)
-#     #img = skimage.exposure.equalize_adapthist(img, kernel_size=11)
-#     img = skimage.img_as_float(img)
-#     return img
 
 def img_select(X, y, batch_size, augment=None):
   assert X.shape[0] == y.shape[0]

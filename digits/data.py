@@ -128,23 +128,6 @@ class Loader:
     y = mnist['label'].reshape((num,)).astype(np.int32)
     X = np.moveaxis(mnist['data'], 1, 0).reshape((num, 28, 28))
     return Data(X=X, y=y, offset=0, inv_map=None)
-        
-  # def raw_pickle_file(self, name):
-  #   return os.path.join(self.pickled_path, name + self.pickle_suffix)
-      
-  # def write_raw(self, name, raw):
-  #   with open(self.raw_pickle_file(name), 'wb') as f:
-  #     pickle.dump(raw, f, protocol=pickle.HIGHEST_PROTOCOL)
-      
-  # def raw_exists(self, name):
-  #   return os.path.isfile(self.raw_pickle_file(name))
-  
-  # def del_raw(self, name):
-  #   os.remove(self.raw_pickle_file(name))
-      
-  # def read_raw(self, name):
-  #   with open(self.raw_pickle_file(name), 'rb') as f:
-  #     return pickle.load(f)
 
   def load_data(self, name, random_state=None):
     """ Return tuple (orig, proc) """
@@ -163,6 +146,16 @@ class Loader:
     elif name == 'crop-test-big':
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
+      return (orig, proc)
+    elif name == 'mnist-train':
+      orig = self.read_mnist()
+      assert orig.X.shape[0] == 70000
+      proc = prepare_cropped(orig, shuffle=True, then_keep=56000, random_state=random_state)
+      return (orig, proc)
+    elif name == 'mnist-test':
+      orig = self.read_mnist()
+      assert orig.X.shape[0] == 70000
+      proc = prepare_cropped(orig, shuffle=True, then_drop=56000, random_state=random_state)
       return (orig, proc)
     else:
       raise Exception('Unknown dataset: ' + name)
@@ -193,13 +186,15 @@ class RandomStateContext:
 
 # TODO consider distribution across all classes
 # also just consider delegating to train_test_split or whatever
-def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_keep=None, random_state=None):
+def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_drop=None, then_keep=None, random_state=None):
   assert data.X.shape[0] == data.y.shape[0]
   assert data.offset == 0
   assert data.inv_map is None
   X = data.X
   y = data.y
+  offset = 0
   if drop is not None:
+    offset = drop
     X = X[drop:]
     y = y[drop:]
   if keep is not None:
@@ -216,12 +211,18 @@ def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_keep=None, r
     y = y[inv_map]
   else:
     inv_map = None
+  if then_drop is not None:
+    X = X[then_drop:]
+    y = y[then_drop:]
+    if inv_map is None:
+      offset += then_drop
+    else:
+      inv_map = inv_map[then_drop:]
   if then_keep is not None:
     X = X[:then_keep]
     y = y[:then_keep]
     if inv_map is not None:
       inv_map = inv_map[:then_keep]
-  offset = drop if drop is not None else 0
   return Data(X=X, y=y, offset=offset, inv_map=inv_map)
 
 def flat_gray(data):
