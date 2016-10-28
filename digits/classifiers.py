@@ -168,7 +168,7 @@ class TFModel(Model):
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
-    inv_prob = 0.0
+    inv_prob = 0.5
 
     rando = lambda img: img_rando(img, i=inv_prob)
     
