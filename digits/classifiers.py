@@ -89,7 +89,7 @@ def maxpool2d(x, k=2):
 def cnn(dataset, dropout, width, depth, num_classes):
   # (width, depth) of initial conv
   # convs = [(5, 32), (5, 64)] # mnist
-  convs = [(5, 32), (5, 64)] # crop
+  convs = [(5, 64), (5, 128), (5, 256)] # crop
   # width of fully connected layers
   # fcs = [1024] # mnist
   fcs = [1024] # crop
