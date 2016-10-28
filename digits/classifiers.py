@@ -90,7 +90,7 @@ def cnn(dataset, dropout, width, depth, num_classes):
   # number of conv layers
   num_conv = 2
   # number of fully connected layers
-  num_fc = 2
+  num_fc = 1
   # depth of initial conv
   feat0 = 32
   # width of fully connected layers
@@ -124,7 +124,7 @@ def cnn(dataset, dropout, width, depth, num_classes):
   return out
 
 class TFModel(Model):
-  def _graph(self, width, depth):
+  def _graph(self, alpha, width, depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
@@ -139,6 +139,8 @@ class TFModel(Model):
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels))
 
+      optimizer = tf.train.AdamOptimizer(learning_rate=alpha).minimize(loss)
+
       prediction = tf.nn.softmax(logits, name='prediction')
       correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
       accuracy = tf.reduce_mean(tf.cast(correct, tf.float32), name='accuracy')
@@ -151,7 +153,7 @@ class TFModel(Model):
       writer = tf.train.SummaryWriter(role_path)
       saver = tf.train.Saver()
 
-    return (graph, loss, saver, writer, summaries)
+    return (graph, loss, saver, writer, summaries, optimizer)
 
   def preprocess(self, data):
     X = img_prepare_all(data.X)
@@ -161,25 +163,24 @@ class TFModel(Model):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
-    alpha = 0.0001
-    training_iters = 400000
+    alpha = 0.001
+    training_iters = 200000
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
     inv_prob = 0.0
 
     rando = lambda img: img_rando(img, i=inv_prob)
-
+    
     train_data = self.preprocess(train_data)
     width = img_width(train_data.X)
     depth = img_depth(train_data.X)
-    graph, loss, saver, writer, summaries = self._graph(width, depth)
+    graph, loss, saver, writer, summaries, optimizer = self._graph(alpha, width, depth)
     train_labels = one_hot(self.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
       writer.add_graph(graph)
-      optimizer = tf.train.GradientDescentOptimizer(alpha).minimize(loss)
 
       step = 0
       num_examples = train_data.X.shape[0]
