@@ -133,11 +133,15 @@ class Loader:
     if name == 'crop-train-small':
       orig = self.read_cropped('train')
       proc = prepare_cropped(orig, shuffle=True, then_keep=1000, random_state=random_state)
+    elif name == 'crop-valid-small':
+      orig = self.read_cropped('test')
+      proc = prepare_cropped(orig, shuffle=True, then_keep=200, random_state=random_state)
     elif name == 'crop-test-small':
       orig = self.read_cropped('test')
-      proc = prepare_cropped(orig, shuffle=True, then_keep=100, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_drop=200, then_keep=200, random_state=random_state)
     elif name == 'crop-train-big':
       orig = self.read_cropped('train')
+      assert orig.X.shape[0] == 73257
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
     elif name == 'crop-test-big':
       orig = self.read_cropped('test')
@@ -145,11 +149,13 @@ class Loader:
     elif name == 'mnist-train':
       orig = self.read_mnist()
       assert orig.X.shape[0] == 70000
-      proc = prepare_cropped(orig, shuffle=True, then_keep=56000, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_keep=42000, random_state=random_state)
+    elif name == 'mnist-valid':
+      orig = self.read_mnist()
+      proc = prepare_cropped(orig, shuffle=True, then_drop=42000, then_keep=14000, random_state=random_state)
     elif name == 'mnist-test':
       orig = self.read_mnist()
-      assert orig.X.shape[0] == 70000
-      proc = prepare_cropped(orig, shuffle=True, then_drop=56000, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_drop=56000, then_keep=14000, random_state=random_state)
     else:
       raise Exception('Unknown dataset: ' + name)
     if preprocessor is not None:
