@@ -8,8 +8,9 @@ from sklearn.datasets import fetch_mldata
 import tensorflow as tf
 
 from .data import Env, Loader, RandomStateContext
-from .classifiers import run_train_model, run_test_model
+from .classifiers import run_train_model, run_test_model, MODELS
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
+from .params import PARAMS
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -24,12 +25,14 @@ def make_parser():
   train_parser.add_argument('--valid-data')
   train_parser.add_argument('--test-data')
   train_parser.add_argument('--preprocessor')
+  train_parser.add_argument('--param-set', required=True)
   train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
   test_parser.add_argument('--variant')
   test_parser.add_argument('--test-data', required=True)
   test_parser.add_argument('--preprocessor')
+  test_parser.add_argument('--param-set', required=True)
   test_parser.add_argument('--random-state', type=int)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
@@ -69,6 +72,9 @@ def write_results(env, args, role, proc, pred):
   metrics.print_classification_report()
 
 def run_train(env, loader, args):
+  assert args.model in MODELS
+  assert args.model in PARAMS
+  assert args.param_set in PARAMS[args.model]
   _, train_proc = loader.load_data(args.train_data, args.preprocessor, args.random_state)
   if args.valid_data is not None:
     _, valid_proc = loader.load_data(args.valid_data, args.preprocessor, args.random_state)
@@ -78,7 +84,7 @@ def run_train(env, loader, args):
     _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   else:
     test_proc = None
-  train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc)
+  train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
   write_results(env, args, 'train', train_proc, train_pred)
   if args.valid_data is not None:
     write_results(env, args, 'valid', valid_proc, valid_pred)
@@ -87,8 +93,11 @@ def run_train(env, loader, args):
     write_results(env, args, 'test', test_proc, test_pred)
 
 def run_test(env, loader, args):
+  assert args.model in MODELS
+  assert args.model in PARAMS
+  assert args.param_set in PARAMS[args.model]
   _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
-  test_pred = run_test_model(env, args.model, args.variant, test_proc)
+  test_pred = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
   write_results(env, args, 'test', test_proc, test_pred)
 
 def report(env, loader, args):

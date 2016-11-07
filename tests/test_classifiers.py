@@ -30,7 +30,7 @@ def acc(actual, expected):
   num_classes = actual.shape[1]
   return accuracy_score(un_hot(num_classes, actual), expected)
 
-def run_model(model, variant, train_data_name, test_data_name, preprocessor):
+def run_model(model, variant, train_data_name, test_data_name, preprocessor, param_set):
   train_args = Namespace(
     random_state=random_state,
     op='train',
@@ -39,7 +39,8 @@ def run_model(model, variant, train_data_name, test_data_name, preprocessor):
     train_data=train_data_name,
     valid_data=test_data_name,
     test_data=None,
-    preprocessor=preprocessor
+    preprocessor=preprocessor,
+    param_set=param_set
   )
   sub_main(env, loader, train_args)
 
@@ -49,7 +50,8 @@ def run_model(model, variant, train_data_name, test_data_name, preprocessor):
     model=model,
     variant=variant,
     test_data=test_data_name,
-    preprocessor=preprocessor
+    preprocessor=preprocessor,
+    param_set=param_set
   )
   sub_main(env, loader, test_args)
 
@@ -63,16 +65,16 @@ def run_model(model, variant, train_data_name, test_data_name, preprocessor):
   np.testing.assert_array_equal(valid_metrics.pred, test_metrics.pred)
 
 def test_baseline_crop():
-  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small', 'flat-gray')
+  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small', 'flat-gray', 'crop')
 
 def test_baseline_mnist():
-  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test', 'flat-gray')
+  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test', 'flat-gray', 'mnist')
 
 #def test_tf_crop():
-#  run_model('tf', 'crop', 'crop-train-big', 'crop-test-big')
+#  run_model('tf', 'crop', 'crop-train-big', 'crop-test-big', 'crop', 'crop')
 
 #def test_tf_crop_small():
-#  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small', 'color')
+#  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small', 'color', 'crop')
 
 def test_tf_mnist():
-  run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color')
+  run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color', 'mnist')

@@ -10,13 +10,13 @@ import tensorflow as tf
 
 from .common import one_hot, product
 from .images import img_select, img_rando, img_width, img_depth
+from .params import PARAMS
 
 class Model(metaclass=ABCMeta):
-  def __init__(self, env, name, variant, num_classes):
+  def __init__(self, env, name, variant):
     self.env = env
     self.name = name
     self.variant = variant
-    self.num_classes = num_classes
 
   def _model_name_plus(self):
     return self.env.model_name_plus(self.name, self.variant)
@@ -34,33 +34,37 @@ class Model(metaclass=ABCMeta):
     return self.env.resolve_role_file(self.name, self.variant, role, filename, clean)
 
   @abstractmethod
-  def train(self, train_data, valid_data=None):
-    """ Return (one_hot preds, one_hot preds) """
+  def train(self, params, train_data, valid_data=None):
+    """ Return (train preds, valid preds) """
     pass
 
   @abstractmethod
-  def test(self, test_data):
-    """ Return (one_hot preds) """
+  def test(self, params, test_data):
+    """ Return (test preds) """
     pass
 
 class BaselineModel(Model):
-  def train(self, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = LogisticRegression()
     clf.fit(train_data.X, train_data.y)
     with open(clf_file, 'wb') as f:
       pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
     train_pred = clf.predict(train_data.X)
+    train_hot = one_hot(params.num_classes, train_pred)
     if valid_data is not None:
       valid_pred = clf.predict(valid_data.X)
-    return (one_hot(self.num_classes, train_pred), one_hot(self.num_classes, valid_pred))
+      valid_hot = one_hot(params.num_classes, valid_pred)
+    else:
+      valid_hot = None
+    return (train_hot, valid_hot)
 
-  def test(self, test_data):
+  def test(self, params, test_data):
     clf_file = self._resolve_model_file('model.clf')
     with open(clf_file, 'rb') as f:
       clf = pickle.load(f)
     test_pred = clf.predict(test_data.X)
-    return one_hot(self.num_classes, test_pred)
+    return one_hot(params.num_classes, test_pred)
 
 
 # conv2d/maxpool2d definition from
@@ -122,17 +126,17 @@ def cnn(dataset, dropout, width, depth, num_classes):
   return (out, conv_weights, fc_weights)
 
 class TFModel(Model):
-  def _graph(self, lam, alpha, width, depth):
+  def _graph(self, lam, alpha, width, depth, num_classes):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
       dataset = tf.placeholder(tf.float32, shape=[None, width, width, depth], name='dataset')
-      labels = tf.placeholder(tf.int32, shape=[None, self.num_classes], name='labels')
+      labels = tf.placeholder(tf.int32, shape=[None, num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, width, depth, self.num_classes)
+      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, width, depth, num_classes)
 
       reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
             sum(tf.nn.l2_loss(w) for w in fc_weights)
@@ -156,13 +160,13 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries, optimizer)
 
-  def train(self, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
     # Params
     lam =  0.00000001 # regularization param 0.0001 for mnist
     alpha = 0.001  # 0.001 for mnist
-    training_iters = 200000  # 200k for mnist
+    training_iters = 10000  # 200k for mnist
     batch_size = 128
     display_step = 10
     dropout = 0.75 # keep_prob, 1.0 keep all
@@ -172,8 +176,8 @@ class TFModel(Model):
     
     width = img_width(train_data.X)
     depth = img_depth(train_data.X)
-    graph, loss, saver, writer, summaries, optimizer = self._graph(lam, alpha, width, depth)
-    train_labels = one_hot(self.num_classes, train_data.y)
+    graph, loss, saver, writer, summaries, optimizer = self._graph(lam, alpha, width, depth, params.num_classes)
+    train_labels = one_hot(params.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
@@ -212,14 +216,14 @@ class TFModel(Model):
       
       if valid_data is not None:
         print('predicting valid')
-        valid_labels = one_hot(self.num_classes, valid_data.y)
+        valid_labels = one_hot(params.num_classes, valid_data.y)
         valid_pred = batch_pred(valid_data.X, valid_labels)
       else:
         valid_pred = None
 
     return (train_pred, valid_pred)
 
-  def test(self, test_data):
+  def test(self, params, test_data):
     batch_size = 128
     ckpt_path = self._resolve_model_file('model.ckpt')
     graph = tf.Graph()
@@ -227,7 +231,7 @@ class TFModel(Model):
       new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
       new_saver.restore(session, ckpt_path)
       raw_test_pred = graph.get_tensor_by_name('prediction:0')
-      test_labels = one_hot(self.num_classes, test_data.y)
+      test_labels = one_hot(params.num_classes, test_data.y)
       def batch_pred(dataset, labels):
         preds = []
         offset = 0
@@ -246,12 +250,14 @@ MODELS = {
 }
 
 # TODO take num_classes in both of these
-def run_train_model(env, name, variant, train_data, valid_data):
-  model = MODELS[name](env, name, variant, 10)
-  train_pred, valid_pred = model.train(train_data, valid_data)
+def run_train_model(env, name, variant, train_data, valid_data, param_set):
+  model = MODELS[name](env, name, variant)
+  params = PARAMS[name][param_set]
+  train_pred, valid_pred = model.train(params, train_data, valid_data)
   return (train_pred, valid_pred)
 
-def run_test_model(env, name, variant, test_data):
-  model = MODELS[name](env, name, variant, 10)
-  test_pred = model.test(test_data)
+def run_test_model(env, name, variant, test_data, param_set):
+  model = MODELS[name](env, name, variant)
+  params = PARAMS[name][param_set]
+  test_pred = model.test(params, test_data)
   return test_pred
