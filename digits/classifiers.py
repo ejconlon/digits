@@ -77,32 +77,23 @@ def conv2d(x, W, b, strides=1):
 def maxpool2d(x, k=2):
   return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-def cnn(dataset, dropout, width, depth, num_classes):
-  # (width, depth) of initial conv
-  convs = [(5, 32), (5, 64)] # mnist
-  # convs = [(5, 32), (5, 128), (5, 512)] # crop
-  # convs = [(5, 16), (7, 512)] # yann
-  # width of fully connected layers
-  fcs = [1024] # mnist
-  # fcs = [1024] # crop
-  # fcs = [20] # yann
-
-  num_conv = len(convs)
-  num_fc = len(fcs)
+def cnn(dataset, dropout, params, width, depth):
+  num_conv = len(params.convs)
+  num_fc = len(params.fcs)
 
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
   # because we do 2-pooling after every round
   c = width // (1 << num_conv)
   assert c * (1 << num_conv) == width
-  unconn = c * c * convs[-1][1]
+  unconn = c * c * params.convs[-1][1]
 
   conv_weights = []
   fc_weights = []
 
   conv = dataset
   last_depth = depth
-  for (conv_width, conv_depth) in convs:
+  for (conv_width, conv_depth) in params.convs:
     w = tf.Variable(tf.random_normal([conv_width, conv_width, last_depth, conv_depth]))
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = maxpool2d(conv2d(conv, w, b), k=2)
@@ -111,40 +102,40 @@ def cnn(dataset, dropout, width, depth, num_classes):
 
   fc = tf.reshape(conv, [-1, unconn])
   last_conn = unconn
-  for conn in fcs:
+  for conn in params.fcs:
     w = tf.Variable(tf.random_normal([last_conn, conn]))
     b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(fc, w), b)), dropout)
     last_conn = conn
     fc_weights.append(w)
 
-  out_w = tf.Variable(tf.random_normal([last_conn, num_classes]))
-  out_b = tf.Variable(tf.random_normal([num_classes]))
+  out_w = tf.Variable(tf.random_normal([last_conn, params.num_classes]))
+  out_b = tf.Variable(tf.random_normal([params.num_classes]))
 
   out = tf.add(tf.matmul(fc, out_w), out_b)
 
   return (out, conv_weights, fc_weights)
 
 class TFModel(Model):
-  def _graph(self, lam, alpha, width, depth, num_classes):
+  def _graph(self, params, width, depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
       dataset = tf.placeholder(tf.float32, shape=[None, width, width, depth], name='dataset')
-      labels = tf.placeholder(tf.int32, shape=[None, num_classes], name='labels')
+      labels = tf.placeholder(tf.int32, shape=[None, params.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
     
-      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, width, depth, num_classes)
+      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, depth)
 
       reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
             sum(tf.nn.l2_loss(w) for w in fc_weights)
 
       loss = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + lam * reg
+        tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + params.lam * reg
 
-      optimizer = tf.train.AdamOptimizer(learning_rate=alpha).minimize(loss)
+      optimizer = tf.train.AdamOptimizer(learning_rate=params.alpha).minimize(loss)
 
       prediction = tf.nn.softmax(logits, name='prediction')
       correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
@@ -163,20 +154,12 @@ class TFModel(Model):
   def train(self, params, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
-    # Params
-    lam =  0.00000001 # regularization param 0.0001 for mnist
-    alpha = 0.001  # 0.001 for mnist
-    training_iters = 10000  # 200k for mnist
-    batch_size = 128
-    display_step = 10
-    dropout = 0.75 # keep_prob, 1.0 keep all
-
     # you can tune rando params if you want
     rando = img_rando
     
     width = img_width(train_data.X)
     depth = img_depth(train_data.X)
-    graph, loss, saver, writer, summaries, optimizer = self._graph(lam, alpha, width, depth, params.num_classes)
+    graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
     train_labels = one_hot(params.num_classes, train_data.y)
 
     with tf.Session(graph=graph) as session:
@@ -186,14 +169,14 @@ class TFModel(Model):
       step = 0
       num_examples = train_data.X.shape[0]
 
-      while step * batch_size < training_iters:
-        dataset, labels = img_select(train_data.X, train_labels, batch_size, rando)
-        feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': dropout}
+      while step * params.batch_size < params.training_iters:
+        dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
+        feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
         session.run([optimizer], feed_dict=feed_dict)
-        if step % display_step == 0:
+        if step % params.display_step == 0:
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
           display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-          print('seen {} loss {} acc {}'.format(step*batch_size, display_loss, display_acc))
+          print('seen {} loss {} acc {}'.format(step*params.batch_size, display_loss, display_acc))
           writer.add_summary(display_summaries, step)
         step += 1
 
@@ -204,11 +187,11 @@ class TFModel(Model):
         preds = []
         offset = 0
         while offset < len(dataset):
-          dataset_batch = dataset[offset:offset+batch_size]
-          labels_batch = labels[offset:offset+batch_size]
+          dataset_batch = dataset[offset:offset+params.batch_size]
+          labels_batch = labels[offset:offset+params.batch_size]
           [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
           preds.append(pred)
-          offset += batch_size
+          offset += params.batch_size
         return np.concatenate(preds)
 
       print('predicting train')
