@@ -20,7 +20,8 @@ env.assert_ready()
 loader = Loader.from_env(env)
 loader.assert_ready()
 
-random_state = random.randint(0, 1000)
+# random_state = random.randint(0, 1000)
+random_state = 70
 
 def acc(actual, expected):
   assert len(expected.shape) == 1
@@ -29,7 +30,7 @@ def acc(actual, expected):
   num_classes = actual.shape[1]
   return accuracy_score(un_hot(num_classes, actual), expected)
 
-def run_model(model, variant, train_data_name, test_data_name):
+def run_model(model, variant, train_data_name, test_data_name, preprocessor):
   train_args = Namespace(
     random_state=random_state,
     op='train',
@@ -37,7 +38,8 @@ def run_model(model, variant, train_data_name, test_data_name):
     variant=variant,
     train_data=train_data_name,
     valid_data=test_data_name,
-    test_data=None
+    test_data=None,
+    preprocessor=preprocessor
   )
   sub_main(env, loader, train_args)
 
@@ -46,7 +48,8 @@ def run_model(model, variant, train_data_name, test_data_name):
     op='test',
     model=model,
     variant=variant,
-    test_data=test_data_name
+    test_data=test_data_name,
+    preprocessor=preprocessor
   )
   sub_main(env, loader, test_args)
 
@@ -60,16 +63,16 @@ def run_model(model, variant, train_data_name, test_data_name):
   np.testing.assert_array_equal(valid_metrics.pred, test_metrics.pred)
 
 def test_baseline_crop():
-  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small')
+  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small', 'flat-gray')
 
 def test_baseline_mnist():
-  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test')
+  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test', 'flat-gray')
 
 #def test_tf_crop():
 #  run_model('tf', 'crop', 'crop-train-big', 'crop-test-big')
 
-def test_tf_crop_small():
-  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small')
+#def test_tf_crop_small():
+#  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small', 'color')
 
-#def test_tf_mnist():
-#  run_model('tf', 'mnist', 'mnist-train', 'mnist-test')
+def test_tf_mnist():
+  run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color')

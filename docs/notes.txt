@@ -27,3 +27,8 @@ max activation/gradient
 number of parameters
 running avg of successes
 recent predictions including top 3 with p, and correct pred
+
+Arrangment:
+Data
+Preprocessing
+Model

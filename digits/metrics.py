@@ -1,5 +1,4 @@
 from collections import namedtuple
-import pickle
 
 import numpy as np
 import pandas as pd
@@ -7,7 +6,7 @@ import scipy.stats
 import sklearn.metrics
 import json_tricks.np
 
-from .common import un_hot
+from .common import un_hot, unpickle_from, pickle_to
 
 Report = namedtuple('Report', [
   'num_classes',
@@ -35,14 +34,6 @@ def write_report(report, filename):
 def read_report(filename):
   with open(filename, 'r') as f:
     return Report(**json_tricks.np.load(f))
-
-def pickle_to(x, filename):
-  with open(filename, 'wb') as f:
-    pickle.dump(x, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-def unpickle_from(filename):
-  with open(filename, 'rb') as f:
-    return pickle.load(f)
 
 class Metrics:
   def __init__(self, num_classes, pred_hot, gold):

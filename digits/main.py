@@ -23,11 +23,13 @@ def make_parser():
   train_parser.add_argument('--train-data', required=True)
   train_parser.add_argument('--valid-data')
   train_parser.add_argument('--test-data')
+  train_parser.add_argument('--preprocessor')
   train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
   test_parser.add_argument('--variant')
   test_parser.add_argument('--test-data', required=True)
+  test_parser.add_argument('--preprocessor')
   test_parser.add_argument('--random-state', type=int)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
@@ -67,13 +69,13 @@ def write_results(env, args, role, proc, pred):
   metrics.print_classification_report()
 
 def run_train(env, loader, args):
-  _, train_proc = loader.load_data(args.train_data, args.random_state)
+  _, train_proc = loader.load_data(args.train_data, args.preprocessor, args.random_state)
   if args.valid_data is not None:
-    _, valid_proc = loader.load_data(args.valid_data, args.random_state)
+    _, valid_proc = loader.load_data(args.valid_data, args.preprocessor, args.random_state)
   else:
     valid_proc = None
   if args.test_data is not None:
-    _, test_proc = loader.load_data(args.test_data, args.random_state)
+    _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   else:
     test_proc = None
   train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc)
@@ -85,7 +87,7 @@ def run_train(env, loader, args):
     write_results(env, args, 'test', test_proc, test_pred)
 
 def run_test(env, loader, args):
-  _, test_proc = loader.load_data(args.test_data, args.random_state)
+  _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   test_pred = run_test_model(env, args.model, args.variant, test_proc)
   write_results(env, args, 'test', test_proc, test_pred)
 

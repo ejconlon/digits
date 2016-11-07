@@ -1,5 +1,6 @@
 import functools
 import operator
+import pickle
 
 import numpy as np
 
@@ -22,3 +23,11 @@ def one_hot(num_classes, y):
 def un_hot(num_classes, y):
   fn = lambda yr: np.argmax(yr)
   return np.apply_along_axis(fn, 1, y)
+
+def pickle_to(x, filename):
+  with open(filename, 'wb') as f:
+    pickle.dump(x, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+def unpickle_from(filename):
+  with open(filename, 'rb') as f:
+    return pickle.load(f)

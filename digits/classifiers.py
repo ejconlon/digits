@@ -9,8 +9,7 @@ from sklearn.linear_model import LogisticRegression
 import tensorflow as tf
 
 from .common import one_hot, product
-from .data import flat_gray, gray
-from .images import img_select, img_rando, img_prepare_all, img_width, img_depth
+from .images import img_select, img_rando, img_width, img_depth
 
 class Model(metaclass=ABCMeta):
   def __init__(self, env, name, variant, num_classes):
@@ -35,11 +34,6 @@ class Model(metaclass=ABCMeta):
     return self.env.resolve_role_file(self.name, self.variant, role, filename, clean)
 
   @abstractmethod
-  def preprocess(self, data):
-    """ Preprocesses and flattens input data """
-    pass
-
-  @abstractmethod
   def train(self, train_data, valid_data=None):
     """ Return (one_hot preds, one_hot preds) """
     pass
@@ -50,19 +44,14 @@ class Model(metaclass=ABCMeta):
     pass
 
 class BaselineModel(Model):
-  def preprocess(self, data):
-    return flat_gray(data)
-
   def train(self, train_data, valid_data=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = LogisticRegression()
-    train_data = self.preprocess(train_data)
     clf.fit(train_data.X, train_data.y)
     with open(clf_file, 'wb') as f:
       pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
     train_pred = clf.predict(train_data.X)
     if valid_data is not None:
-      valid_data = self.preprocess(valid_data)
       valid_pred = clf.predict(valid_data.X)
     return (one_hot(self.num_classes, train_pred), one_hot(self.num_classes, valid_pred))
 
@@ -70,7 +59,6 @@ class BaselineModel(Model):
     clf_file = self._resolve_model_file('model.clf')
     with open(clf_file, 'rb') as f:
       clf = pickle.load(f)
-    test_data = flat_gray(test_data)
     test_pred = clf.predict(test_data.X)
     return one_hot(self.num_classes, test_pred)
 
@@ -87,12 +75,12 @@ def maxpool2d(x, k=2):
 
 def cnn(dataset, dropout, width, depth, num_classes):
   # (width, depth) of initial conv
-  # convs = [(5, 32), (5, 64)] # mnist
-  convs = [(5, 32), (5, 128), (5, 512)] # crop
+  convs = [(5, 32), (5, 64)] # mnist
+  # convs = [(5, 32), (5, 128), (5, 512)] # crop
   # convs = [(5, 16), (7, 512)] # yann
   # width of fully connected layers
-  # fcs = [1024] # mnist
-  fcs = [1024] # crop
+  fcs = [1024] # mnist
+  # fcs = [1024] # crop
   # fcs = [20] # yann
 
   num_conv = len(convs)
@@ -168,10 +156,6 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries, optimizer)
 
-  def preprocess(self, data):
-    X = img_prepare_all(data.X)
-    return data._replace(X=X)
-
   def train(self, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
 
@@ -186,7 +170,6 @@ class TFModel(Model):
     # you can tune rando params if you want
     rando = img_rando
     
-    train_data = self.preprocess(train_data)
     width = img_width(train_data.X)
     depth = img_depth(train_data.X)
     graph, loss, saver, writer, summaries, optimizer = self._graph(lam, alpha, width, depth)
@@ -229,7 +212,6 @@ class TFModel(Model):
       
       if valid_data is not None:
         print('predicting valid')
-        valid_data = self.preprocess(valid_data)
         valid_labels = one_hot(self.num_classes, valid_data.y)
         valid_pred = batch_pred(valid_data.X, valid_labels)
       else:
@@ -245,7 +227,6 @@ class TFModel(Model):
       new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
       new_saver.restore(session, ckpt_path)
       raw_test_pred = graph.get_tensor_by_name('prediction:0')
-      test_data = self.preprocess(test_data)
       test_labels = one_hot(self.num_classes, test_data.y)
       def batch_pred(dataset, labels):
         preds = []

@@ -5,9 +5,9 @@ import random
 
 import numpy as np
 from scipy.io import loadmat
-from skimage.color import rgb2gray
 
-from .common import product
+from .common import product, unpickle_from, pickle_to
+from .preprocessors import PREPROCESSORS
 
 Data = namedtuple('Data', ['X', 'y', 'offset', 'inv_map'])
 
@@ -82,8 +82,6 @@ class Loader:
   def __init__(self, data_path, pickled_path):
     self.data_path = data_path
     self.pickled_path = pickled_path
-    self.mat_suffix = '_32x32.mat'
-    self.pickle_suffix = '.pickle'
       
   def assert_ready(self):
     assert os.path.isdir(self.data_path)
@@ -95,31 +93,22 @@ class Loader:
       if file.endswith('.pickle'):
         os.remove(os.path.join(self.pickled_path, file))
       
-  # TODO support more than cropped
   def read_cropped(self, role):
-    mat_file = os.path.join(self.data_path, role + self.mat_suffix)
-    pickle_file = os.path.join(self.pickled_path, role + self.mat_suffix + self.pickle_suffix)
-    if not os.path.isfile(pickle_file):
-      mat = loadmat(mat_file)
-      assert len(mat['X'].shape) == 4
-      assert len(mat['y'].shape) == 2
-      assert mat['X'].shape[-1] == mat['y'].shape[0]
-      assert mat['y'].shape[1] == 1
-      X = mat['X']
-      y = mat['y'].ravel().astype(np.int32)
-      assert len(y.shape) == 1
-      # Cleanup X: make row-oriented :(
-      X = np.moveaxis(X, 3, 0)
-      assert X.shape[0] == y.shape[0]
-      # Cleanup y: '10' really means '0' :(
-      y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
-      data = Data(X=X, y=y, offset=0, inv_map=None)
-      with open(pickle_file, 'wb') as f:
-        pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-      return data
-    else:
-      with open(pickle_file, 'rb') as f:
-        return pickle.load(f)
+    mat_file = os.path.join(self.data_path, role + '_32x32.mat')
+    mat = loadmat(mat_file)
+    assert len(mat['X'].shape) == 4
+    assert len(mat['y'].shape) == 2
+    assert mat['X'].shape[-1] == mat['y'].shape[0]
+    assert mat['y'].shape[1] == 1
+    X = mat['X']
+    y = mat['y'].ravel().astype(np.int32)
+    assert len(y.shape) == 1
+    # Cleanup X: make row-oriented :(
+    X = np.moveaxis(X, 3, 0)
+    assert X.shape[0] == y.shape[0]
+    # Cleanup y: '10' really means '0' :(
+    y = np.vectorize(lambda i: 0 if i == 10 else i)(y)
+    return Data(X=X, y=y, offset=0, inv_map=None)
 
   def read_mnist(self):
     mat_file = os.path.join(self.data_path, 'mldata/mnist-original.mat')
@@ -129,36 +118,46 @@ class Loader:
     X = np.moveaxis(mnist['data'], 1, 0).reshape((num, 28, 28))
     return Data(X=X, y=y, offset=0, inv_map=None)
 
-  def load_data(self, name, random_state=None):
+  def load_data(self, name, preprocessor, random_state):
     """ Return tuple (orig, proc) """
+    print('loading', name, preprocessor, random_state)
+    orig_file = os.path.join(self.pickled_path, '.'.join([name, str(random_state), 'orig', 'pickle']))
+    proc_file = os.path.join(self.pickled_path, '.'.join([name, str(random_state), preprocessor, 'proc', 'pickle']))
+    if os.path.isfile(orig_file) and os.path.isfile(proc_file):
+      print('unpickling data')
+      orig = unpickle_from(orig_file)
+      proc = unpickle_from(proc_file)
+      return (orig, proc)
+    else:
+      print('deriving data')
     if name == 'crop-train-small':
       orig = self.read_cropped('train')
       proc = prepare_cropped(orig, shuffle=True, then_keep=1000, random_state=random_state)
-      return (orig, proc)
     elif name == 'crop-test-small':
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, then_keep=100, random_state=random_state)
-      return (orig, proc)
     elif name == 'crop-train-big':
       orig = self.read_cropped('train')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
-      return (orig, proc)
     elif name == 'crop-test-big':
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
-      return (orig, proc)
     elif name == 'mnist-train':
       orig = self.read_mnist()
       assert orig.X.shape[0] == 70000
       proc = prepare_cropped(orig, shuffle=True, then_keep=56000, random_state=random_state)
-      return (orig, proc)
     elif name == 'mnist-test':
       orig = self.read_mnist()
       assert orig.X.shape[0] == 70000
       proc = prepare_cropped(orig, shuffle=True, then_drop=56000, random_state=random_state)
-      return (orig, proc)
     else:
       raise Exception('Unknown dataset: ' + name)
+    if preprocessor is not None:
+      print('preprocessing with', preprocessor)
+      proc = PREPROCESSORS[preprocessor](proc)
+    pickle_to(orig, orig_file)
+    pickle_to(proc, proc_file)
+    return (orig, proc)
 
 
 class RandomStateContext:
@@ -224,19 +223,3 @@ def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_drop=None, t
     if inv_map is not None:
       inv_map = inv_map[:then_keep]
   return Data(X=X, y=y, offset=offset, inv_map=inv_map)
-
-def flat_gray(data):
-  X = data.X
-  X = rgb2gray(X)
-  X = X.astype(np.float32)
-  X = X.reshape((X.shape[0], product(X.shape[1:])))
-  new_data = data._replace(X=X)
-  return new_data
-
-def gray(data):
-  X = data.X
-  X = rgb2gray(X)
-  X = X.astype(np.float32)
-  X = X.reshape((X.shape[0], X.shape[1], X.shape[2], 1))
-  new_data = data._replace(X=X)
-  return new_data
