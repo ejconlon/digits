@@ -161,6 +161,14 @@ class TFModel(Model):
     depth = img_depth(train_data.X)
     graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
     train_labels = one_hot(params.num_classes, train_data.y)
+    if valid_data is not None:
+      valid_labels = one_hot(params.num_classes, valid_data.y)
+      eval_data = valid_data.X
+      eval_labels = valid_labels
+    else:
+      valid_labels = None
+      eval_data = train_data.X
+      eval_labels = train_labels
 
     with tf.Session(graph=graph) as session:
       tf.initialize_all_variables().run()
@@ -170,7 +178,7 @@ class TFModel(Model):
       num_examples = train_data.X.shape[0]
 
       while step * params.batch_size < params.training_iters:
-        dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
+        dataset, labels = img_select(eval_data, eval_labels, params.batch_size, rando)
         feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
         session.run([optimizer], feed_dict=feed_dict)
         if step % params.display_step == 0:
@@ -199,7 +207,6 @@ class TFModel(Model):
       
       if valid_data is not None:
         print('predicting valid')
-        valid_labels = one_hot(params.num_classes, valid_data.y)
         valid_pred = batch_pred(valid_data.X, valid_labels)
       else:
         valid_pred = None
