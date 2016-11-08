@@ -6,13 +6,18 @@ import pprint
 import sys
 import tempfile
 import urllib.request
+import warnings
 
 import pandas as pd
 from sklearn.datasets import fetch_mldata
 import tensorflow as tf
-from runipy.notebook_runner import NotebookRunner
-from IPython.nbformat.current import read, write
-import nbconvert
+
+# These are noisy with deprecations that I don't really care about here
+with warnings.catch_warnings():
+  warnings.simplefilter("ignore")
+  from runipy.notebook_runner import NotebookRunner
+  from IPython.nbformat.current import read, write
+  import nbconvert
 
 from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
@@ -33,6 +38,8 @@ def make_parser():
   train_parser.add_argument('--test-data')
   train_parser.add_argument('--preprocessor')
   train_parser.add_argument('--param-set', required=True)
+  train_parser.add_argument('--search-set')
+  train_parser.add_argument('--search-size', type=int)
   train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
@@ -48,6 +55,9 @@ def make_parser():
   curve_parser = subparsers.add_parser('curve')
   curve_parser.add_argument('--model', required=True)
   curve_parser.add_argument('--variant')
+  params_parser = subparsers.add_parser('params')
+  params_parser.add_argument('--model', required=True)
+  params_parser.add_argument('--variant')
   summarize_parser = subparsers.add_parser('summarize')
   summarize_parser.add_argument('--data', required=True)
   subparsers.add_parser('fetch_mnist')
@@ -83,6 +93,11 @@ def write_results(env, args, role, proc, pred):
   print('accuracy', metrics.accuracy())
   metrics.print_classification_report()
 
+def write_params(env, args, params):
+  params_file = env.resolve_model_file(args.model, args.variant, 'params.json', clean=True)
+  with open(params_file, 'w') as f:
+    json.dump(vars(args), f, sort_keys=True, indent=2)
+
 def run_train(env, loader, args):
   assert args.model in MODELS
   assert args.model in PARAMS
@@ -96,12 +111,28 @@ def run_train(env, loader, args):
     _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   else:
     test_proc = None
-  train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
+
+  final_params = None
+  train_pred = None
+  valid_pred = None
+
+  if args.search_set is not None:
+    assert args.search_size is not None
+    # generate props from search set and assign variant names
+    # run each, keeping track of best
+    # copy best to original variant
+    # assign final params, train_pred, valid_pred
+    raise Exception('TODO')
+  else:
+    train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
+    final_params = PARAMS[args.model][args.param_set]
+
+  write_params(env, args, final_params)
   write_results(env, args, 'train', train_proc, train_pred)
   if args.valid_data is not None:
     write_results(env, args, 'valid', valid_proc, valid_pred)
   if args.test_data is not None:
-    test_pred = run_test_model(env, args.model, args.variant, test_proc)
+    test_pred = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
     write_results(env, args, 'test', test_proc, test_pred)
 
 def run_test(env, loader, args):
@@ -121,6 +152,11 @@ def curve(env, loader, args):
   filename = env.resolve_model_file(args.model, args.variant, 'learning_curve.csv')
   curve = pd.read_csv(filename)
   print(curve)
+
+def params(env, loader, args):
+  filename = env.resolve_model_file(args.model, args.variant, 'params.json')
+  with open(filename, 'r') as f:
+    pprint.pprint(f.read())
 
 def summarize(env, loader, args):
   orig, proc = loader.load_data(args.data)
@@ -173,6 +209,7 @@ OPS = {
   'test': run_test,
   'report': report,
   'curve': curve,
+  'params': params,
   'summarize': summarize,
   'fetch_mnist': fetch_mnist,
   'fetch_svhn': fetch_svhn,

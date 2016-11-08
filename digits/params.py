@@ -17,7 +17,7 @@ PARAMS = {
       # learning rate
       alpha = 0.001,
       # TODO 200k for mnist
-      training_iters = 50000,  
+      training_iters = 10000,  
       # number of examples per descent
       batch_size = 128,
       # number of examples per display step
@@ -29,19 +29,22 @@ PARAMS = {
       # (width, depth) of convolutional layers
       convs = [(5, 32), (5, 64)],
       # size of fully connected layers
-      fcs = [1024]
+      fcs = [1024],
+      # randomize image rotation, etc
+      use_rando = False
     ),
     'crop': Namespace(
       num_classes = 10,
-      lam =  0.0001,
-      alpha = 0.0003,
-      training_iters = 200000,
+      lam =  0.000001,
+      alpha = 0.0001,
+      training_iters = 1000000,
       batch_size = 128,
       display_size = 512,
       display_step = 10,
       dropout = 0.75,
-      convs = [(5, 32), (5, 64)],
-      fcs = [1024]
+      convs = [(5, 32), (3, 32), (3, 32)],
+      fcs = [512],
+      use_rando = False
     )
   }
 }

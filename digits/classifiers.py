@@ -162,8 +162,11 @@ class TFModel(Model):
       csv_writer = csv.DictWriter(csv_file, columns)
       csv_writer.writeheader()
 
-      # TODO tune rando params
-      rando = img_rando
+      if params.use_rando:
+        # TODO tune rando params
+        rando = img_rando
+      else:
+        rando = None
       
       width = img_width(train_data.X)
       depth = img_depth(train_data.X)
@@ -186,14 +189,14 @@ class TFModel(Model):
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
           session.run([optimizer], feed_dict=feed_dict)
           if step % params.display_step == 0:
-            row = { 'step': step, 'seen': step * params.batch_size }
+            row = { 'step': step, 'seen': (step + 1) * params.batch_size }
             sets = [('train', img_select(train_data.X, train_labels, params.display_size))]
             if valid_data is not None:
               sets.append(('valid', img_select(valid_data.X, valid_labels, params.display_size)))
             for (role, (dataset, labels)) in sets:
               feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
               display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-              print('role {} seen {} loss {} acc {}'.format(role, step*params.batch_size, display_loss, display_acc))
+              print('batch {} seen {} role {} loss {} acc {}'.format(step, (step + 1)*params.batch_size, role, display_loss, display_acc))
               row[role + '_loss'] = display_loss
               row[role + '_acc'] = display_acc
             writer.add_summary(display_summaries, step)
