@@ -1,8 +1,10 @@
 from abc import ABCMeta, abstractmethod
+from argparse import Namespace
 from collections import namedtuple
 import csv
 import os
 import pickle
+import random
 import shutil
 
 import numpy as np
@@ -255,11 +257,16 @@ MODELS = {
 # TODO take num_classes in both of these
 def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None):
   model = MODELS[name](env, name, variant)
-  params = PARAMS[name][param_set]  
+  orig_params = PARAMS[name][param_set]  
   if search_set is not None:
     search = SEARCH[name][search_set]
-    # TODO update params
-    # params = params
+    params = Namespace()
+    for (k, v) in orig_params._get_kwargs():
+      setattr(params, k, v)
+    for (k, vs) in search._get_kwargs():
+      setattr(params, k, random.choice(vs))
+  else:
+    params = orig_params
   valid_pred = model.train(params, train_data, valid_data)
   if valid_pred is not None:
     valid_metrics = Metrics(params.num_classes, valid_pred, valid_data.y)
