@@ -73,11 +73,11 @@ def run_model(model, variant, train_data_name, test_data_name, preprocessor, par
 # def test_tf_crop_huge():
 #   run_model('tf', 'crop-huge', 'crop-train-huge', 'crop-test-huge', 'color', 'crop')
 
-# def test_tf_crop_big():
-#   run_model('tf', 'crop-big', 'crop-train-big', 'crop-test-big', 'color', 'crop')
+def test_tf_crop_big():
+  run_model('tf', 'crop-big', 'crop-train-big', 'crop-test-big', 'color', 'crop')
 
 # def test_tf_crop_small():
 #   run_model('tf', 'crop-small', 'crop-train-small', 'crop-test-small', 'color', 'crop')
 
-def test_tf_mnist():
-  run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color', 'mnist')
+# def test_tf_mnist():
+#   run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color', 'mnist')
