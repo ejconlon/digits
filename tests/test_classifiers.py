@@ -125,17 +125,17 @@ def run_model(
 #     param_set='crop'
 #   )
 
-def test_tf_mnist():
-  run_model(
-    model='tf',
-    variant='mnist',
-    train_data_name='mnist-train',
-    valid_data_name=None,
-    test_data_name='mnist-test',
-    preprocessor='color',
-    param_set='mnist',
-    check_ser=True
-  )
+# def test_tf_mnist():
+#   run_model(
+#     model='tf',
+#     variant='mnist',
+#     train_data_name='mnist-train',
+#     valid_data_name=None,
+#     test_data_name='mnist-test',
+#     preprocessor='color',
+#     param_set='mnist',
+#     check_ser=True
+#   )
 
 def test_tf_mnist_search():
   run_model(

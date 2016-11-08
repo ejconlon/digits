@@ -17,7 +17,7 @@ PARAMS = {
       # learning rate
       alpha = 0.001,
       # TODO 200k for mnist
-      training_iters = 1000,  
+      training_iters = 10000,  
       # number of examples per descent
       batch_size = 128,
       # number of examples per display step
@@ -37,7 +37,7 @@ PARAMS = {
       num_classes = 10,
       lam =  0.000001,
       alpha = 0.0001,
-      training_iters = 1000000,
+      training_iters = 100000,
       batch_size = 128,
       display_size = 512,
       display_step = 10,
@@ -52,7 +52,12 @@ PARAMS = {
 SEARCH = {
   'tf': {
     'mnist': Namespace(
-      use_rando = [True, False]
+      use_rando = [True, False],
+      lam = [0.0001, 0.0003, 0.001, 0.00003],
+      alpha = [0.001, 0.003, 0.0001],
+      fcs = [[1024], [512]],
+      convs = [[(5, 32), (5, 64)], [(5, 64), (5, 128)]],
+      dropout = [.65, .75, .85]
     )
   }
 }

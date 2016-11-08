@@ -192,7 +192,7 @@ class TFModel(Model):
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
           session.run([optimizer], feed_dict=feed_dict)
           if step % params.display_step == 0:
-            seen = (step + 1) * params.display_step * params.batch_size
+            seen = step * params.batch_size
             row = { 'step': step, 'seen': seen }
             sets = [('train', img_select(train_data.X, train_labels, params.display_size))]
             if valid_data is not None:
