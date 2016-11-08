@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
+import csv
 import os
 import pickle
 import shutil
@@ -153,68 +154,78 @@ class TFModel(Model):
 
   def train(self, params, train_data, valid_data=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
-
-    # you can tune rando params if you want
-    rando = img_rando
-    
-    width = img_width(train_data.X)
-    depth = img_depth(train_data.X)
-    graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
-    train_labels = one_hot(params.num_classes, train_data.y)
-    if valid_data is not None:
-      valid_labels = one_hot(params.num_classes, valid_data.y)
-      eval_data = valid_data.X
-      eval_labels = valid_labels
-    else:
-      valid_labels = None
-      eval_data = train_data.X
-      eval_labels = train_labels
-
-    with tf.Session(graph=graph) as session:
-      tf.initialize_all_variables().run()
-      writer.add_graph(graph)
-
-      step = 0
-      num_examples = train_data.X.shape[0]
-
-      while step * params.batch_size < params.training_iters:
-        dataset, labels = img_select(eval_data, eval_labels, params.batch_size, rando)
-        feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
-        session.run([optimizer], feed_dict=feed_dict)
-        if step % params.display_step == 0:
-          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
-          display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-          print('seen {} loss {} acc {}'.format(step*params.batch_size, display_loss, display_acc))
-          writer.add_summary(display_summaries, step)
-        step += 1
-
-      print('saving')
-      saver.save(session, ckpt_path)
-
-      def batch_pred(dataset, labels):
-        preds = []
-        offset = 0
-        while offset < len(dataset):
-          dataset_batch = dataset[offset:offset+params.batch_size]
-          labels_batch = labels[offset:offset+params.batch_size]
-          [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
-          preds.append(pred)
-          offset += params.batch_size
-        return np.concatenate(preds)
-
-      print('predicting train')
-      train_pred = batch_pred(train_data.X, train_labels)
-      
+    csv_path = self._resolve_model_file('learning_curve.csv')
+    with open(csv_path, 'w') as csv_file:
+      columns = ['step', 'seen', 'train_acc', 'train_loss']
       if valid_data is not None:
-        print('predicting valid')
-        valid_pred = batch_pred(valid_data.X, valid_labels)
-      else:
-        valid_pred = None
+        columns.extend(['valid_acc', 'valid_loss'])
+      csv_writer = csv.DictWriter(csv_file, columns)
+      csv_writer.writeheader()
 
-    return (train_pred, valid_pred)
+      # TODO tune rando params
+      rando = img_rando
+      
+      width = img_width(train_data.X)
+      depth = img_depth(train_data.X)
+      graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
+      train_labels = one_hot(params.num_classes, train_data.y)
+      if valid_data is not None:
+        valid_labels = one_hot(params.num_classes, valid_data.y)
+      else:
+        valid_labels = None
+
+      with tf.Session(graph=graph) as session:
+        tf.initialize_all_variables().run()
+        writer.add_graph(graph)
+
+        step = 0
+        num_examples = train_data.X.shape[0]
+
+        while step * params.batch_size < params.training_iters:
+          dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
+          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
+          session.run([optimizer], feed_dict=feed_dict)
+          if step % params.display_step == 0:
+            row = { 'step': step, 'seen': step * params.batch_size }
+            sets = [('train', img_select(train_data.X, train_labels, params.display_size))]
+            if valid_data is not None:
+              sets.append(('valid', img_select(valid_data.X, valid_labels, params.display_size)))
+            for (role, (dataset, labels)) in sets:
+              feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
+              display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
+              print('role {} seen {} loss {} acc {}'.format(role, step*params.batch_size, display_loss, display_acc))
+              row[role + '_loss'] = display_loss
+              row[role + '_acc'] = display_acc
+            writer.add_summary(display_summaries, step)
+            csv_writer.writerow(row)
+          step += 1
+
+        print('saving')
+        saver.save(session, ckpt_path)
+
+        def batch_pred(dataset, labels):
+          preds = []
+          offset = 0
+          while offset < len(dataset):
+            dataset_batch = dataset[offset:offset+params.display_size]
+            labels_batch = labels[offset:offset+params.display_size]
+            [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
+            preds.append(pred)
+            offset += params.display_size
+          return np.concatenate(preds)
+
+        print('predicting train')
+        train_pred = batch_pred(train_data.X, train_labels)
+        
+        if valid_data is not None:
+          print('predicting valid')
+          valid_pred = batch_pred(valid_data.X, valid_labels)
+        else:
+          valid_pred = None
+
+      return (train_pred, valid_pred)
 
   def test(self, params, test_data):
-    batch_size = 128
     ckpt_path = self._resolve_model_file('model.ckpt')
     graph = tf.Graph()
     with tf.Session(graph=graph) as session:
@@ -226,11 +237,11 @@ class TFModel(Model):
         preds = []
         offset = 0
         while offset < len(dataset):
-          dataset_batch = dataset[offset:offset+batch_size]
-          labels_batch = labels[offset:offset+batch_size]
+          dataset_batch = dataset[offset:offset+params.display_size]
+          labels_batch = labels[offset:offset+params.display_size]
           [pred] = session.run(['prediction:0'], feed_dict={'dataset:0': dataset_batch, 'labels:0': labels_batch, 'keep_prob:0': 1.0})
           preds.append(pred)
-          offset += batch_size
+          offset += params.display_size
         return np.concatenate(preds)
       return batch_pred(test_data.X, test_labels)
 

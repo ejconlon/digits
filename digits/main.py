@@ -1,9 +1,11 @@
 import argparse
+import csv
 import json
 import os
 import pprint
 import sys
 
+import pandas as pd
 from sklearn.datasets import fetch_mldata
 import tensorflow as tf
 
@@ -38,6 +40,9 @@ def make_parser():
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
   report_parser.add_argument('--role', required=True)
+  curve_parser = subparsers.add_parser('curve')
+  curve_parser.add_argument('--model', required=True)
+  curve_parser.add_argument('--variant')
   summarize_parser = subparsers.add_parser('summarize')
   summarize_parser.add_argument('--data', required=True)
   subparsers.add_parser('fetch_mnist')
@@ -105,6 +110,11 @@ def report(env, loader, args):
   report = read_report(filename)
   pprint.pprint(report._asdict())
 
+def curve(env, loader, args):
+  filename = env.resolve_model_file(args.model, args.variant, 'learning_curve.csv')
+  curve = pd.read_csv(filename)
+  print(curve)
+
 def summarize(env, loader, args):
   orig, proc = loader.load_data(args.data)
   print('orig X', orig.X.shape)
@@ -121,6 +131,7 @@ OPS = {
   'train': run_train,
   'test': run_test,
   'report': report,
+  'curve': curve,
   'summarize': summarize,
   'fetch_mnist': fetch_mnist
 }

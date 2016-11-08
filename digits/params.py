@@ -20,6 +20,8 @@ PARAMS = {
       training_iters = 50000,  
       # number of examples per descent
       batch_size = 128,
+      # number of examples per display step
+      display_size = 512,
       # number of batches per display/validation step
       display_step = 10,
       # keep_prob, 1.0 keep all
@@ -35,6 +37,7 @@ PARAMS = {
       alpha = 0.0003,
       training_iters = 200000,
       batch_size = 128,
+      display_size = 512,
       display_step = 10,
       dropout = 0.75,
       convs = [(5, 32), (5, 64)],
