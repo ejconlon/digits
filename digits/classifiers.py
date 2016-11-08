@@ -11,7 +11,8 @@ import tensorflow as tf
 
 from .common import one_hot, product
 from .images import img_select, img_rando, img_width, img_depth
-from .params import PARAMS
+from .params import PARAMS, SEARCH
+from .metrics import Metrics
 
 class Model(metaclass=ABCMeta):
   def __init__(self, env, name, variant):
@@ -189,14 +190,15 @@ class TFModel(Model):
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
           session.run([optimizer], feed_dict=feed_dict)
           if step % params.display_step == 0:
-            row = { 'step': step, 'seen': (step + 1) * params.batch_size }
+            seen = (step + 1) * params.display_step * params.batch_size
+            row = { 'step': step, 'seen': seen }
             sets = [('train', img_select(train_data.X, train_labels, params.display_size))]
             if valid_data is not None:
               sets.append(('valid', img_select(valid_data.X, valid_labels, params.display_size)))
             for (role, (dataset, labels)) in sets:
               feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
               display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-              print('batch {} seen {} role {} loss {} acc {}'.format(step, (step + 1)*params.batch_size, role, display_loss, display_acc))
+              print('batch {} seen {} role {} loss {} acc {}'.format(step, seen, role, display_loss, display_acc))
               row[role + '_loss'] = display_loss
               row[role + '_acc'] = display_acc
             writer.add_summary(display_summaries, step)
@@ -217,16 +219,13 @@ class TFModel(Model):
             offset += params.display_size
           return np.concatenate(preds)
 
-        print('predicting train')
-        train_pred = batch_pred(train_data.X, train_labels)
-        
         if valid_data is not None:
           print('predicting valid')
           valid_pred = batch_pred(valid_data.X, valid_labels)
         else:
           valid_pred = None
 
-      return (train_pred, valid_pred)
+      return valid_pred
 
   def test(self, params, test_data):
     ckpt_path = self._resolve_model_file('model.ckpt')
@@ -254,14 +253,23 @@ MODELS = {
 }
 
 # TODO take num_classes in both of these
-def run_train_model(env, name, variant, train_data, valid_data, param_set):
+def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None):
   model = MODELS[name](env, name, variant)
-  params = PARAMS[name][param_set]
-  train_pred, valid_pred = model.train(params, train_data, valid_data)
-  return (train_pred, valid_pred)
+  params = PARAMS[name][param_set]  
+  if search_set is not None:
+    search = SEARCH[name][search_set]
+    # TODO update params
+    # params = params
+  valid_pred = model.train(params, train_data, valid_data)
+  if valid_pred is not None:
+    valid_metrics = Metrics(params.num_classes, valid_pred, valid_data.y)
+  else:
+    valid_metrics = None
+  return (params, valid_metrics)
 
 def run_test_model(env, name, variant, test_data, param_set):
   model = MODELS[name](env, name, variant)
   params = PARAMS[name][param_set]
   test_pred = model.test(params, test_data)
-  return test_pred
+  test_metrics = Metrics(params.num_classes, test_pred, test_data.y)
+  return test_metrics

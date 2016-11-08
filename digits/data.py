@@ -2,6 +2,7 @@ from collections import namedtuple
 import os
 import pickle
 import random
+import shutil
 
 import numpy as np
 from scipy.io import loadmat

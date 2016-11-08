@@ -3,6 +3,7 @@ import csv
 import json
 import os
 import pprint
+import shutil
 import sys
 import tempfile
 import urllib.request
@@ -22,7 +23,7 @@ with warnings.catch_warnings():
 from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
-from .params import PARAMS
+from .params import PARAMS, SEARCH
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -74,29 +75,23 @@ def inspect(env, loader, args):
     print('tensor_name:', key)
     print(reader.get_tensor(key))
 
-def write_args(env, args):
-  args_file = env.resolve_model_file(args.model, args.variant, args.op + '.json', clean=True)
-  with open(args_file, 'w') as f:
-    json.dump(vars(args), f, sort_keys=True, indent=2)
-
-def write_results(env, args, role, proc, pred):
-  report_file = env.resolve_role_file(args.model, args.variant, role, 'report.json', clean=True)
-  metrics_file = env.resolve_role_file(args.model, args.variant, role, 'metrics.pickle', clean=True)
-  viz_file = env.resolve_role_file(args.model, args.variant, role, 'viz.pickle', clean=True)
-  metrics = Metrics(10, pred, proc.y)
+def write_results(env, model, variant, role, proc, metrics):
+  report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
+  metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
+  viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)
   pickle_to(metrics, metrics_file)
   report = metrics.report()
   write_report(report, report_file)
   viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
-  print(env.model_name_plus(args.model, args.variant), '/', role)
+  print(env.model_name_plus(model, variant), '/', role)
   print('accuracy', metrics.accuracy())
   metrics.print_classification_report()
 
-def write_params(env, args, params):
-  params_file = env.resolve_model_file(args.model, args.variant, 'params.json', clean=True)
+def write_params(env, model, variant, params):
+  params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
   with open(params_file, 'w') as f:
-    json.dump(vars(args), f, sort_keys=True, indent=2)
+    json.dump(vars(params), f, sort_keys=True, indent=2)
 
 def run_train(env, loader, args):
   assert args.model in MODELS
@@ -113,35 +108,50 @@ def run_train(env, loader, args):
     test_proc = None
 
   final_params = None
-  train_pred = None
-  valid_pred = None
+  valid_metrics = None
+  best_valid_acc = None
+  best_variant = None
 
   if args.search_set is not None:
     assert args.search_size is not None
-    # generate props from search set and assign variant names
-    # run each, keeping track of best
-    # copy best to original variant
-    # assign final params, train_pred, valid_pred
-    raise Exception('TODO')
+    assert args.search_size > 0
+    assert valid_proc is not None
+    for i in range(args.search_size):
+      variant_i = args.variant + '__' + str(i)
+      cand_params, cand_valid_metrics = \
+        run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set)
+      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics)
+      write_params(env, args.model, variant_i, cand_params)
+      cand_valid_acc = cand_valid_metrics.accuracy()
+      if best_valid_acc is None or cand_valid_acc > best_valid_acc:
+        print('Better variant {} accuracy {}'.format(variant_i, cand_valid_acc))
+        best_variant = variant_i
+        best_valid_acc = cand_valid_acc
+        final_params = cand_params
+        valid_metrics = cand_valid_metrics
+    assert best_variant is not None
+    print('Best variant', best_variant)
+    src_path = env.resolve_model(args.model, variant_i)
+    dest_path = env.resolve_model(args.model, args.variant)
+    shutil.rmtree(dest_path)
+    shutil.copytree(src_path, dest_path)
   else:
-    train_pred, valid_pred = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
-    final_params = PARAMS[args.model][args.param_set]
-
-  write_params(env, args, final_params)
-  write_results(env, args, 'train', train_proc, train_pred)
-  if args.valid_data is not None:
-    write_results(env, args, 'valid', valid_proc, valid_pred)
+    final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
+    if valid_metrics is not None:
+      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics)
+    write_params(env, args.model, args.variant, final_params)
+  
   if args.test_data is not None:
-    test_pred = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-    write_results(env, args, 'test', test_proc, test_pred)
+    test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
+    write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
 
 def run_test(env, loader, args):
   assert args.model in MODELS
   assert args.model in PARAMS
   assert args.param_set in PARAMS[args.model]
   _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
-  test_pred = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-  write_results(env, args, 'test', test_proc, test_pred)
+  test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
+  write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
 
 def report(env, loader, args):
   filename = env.resolve_role_file(args.model, args.variant, args.role, 'report.json')

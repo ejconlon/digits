@@ -136,3 +136,16 @@ def test_tf_mnist():
     param_set='mnist',
     check_ser=True
   )
+
+def test_tf_mnist_search():
+  run_model(
+    model='tf',
+    variant='mnist-search',
+    train_data_name='mnist-train',
+    valid_data_name='mnist-valid',
+    test_data_name='mnist-test',
+    preprocessor='color',
+    param_set='mnist',
+    search_set='mnist',
+    search_size=2
+  )
