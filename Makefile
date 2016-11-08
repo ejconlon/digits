@@ -12,6 +12,9 @@ clean:
 	rm -rf logs/*
 	rm -rf results/*
 
+nuke: clean
+	rm -rf data/*
+
 test:
 	py.test tests
 

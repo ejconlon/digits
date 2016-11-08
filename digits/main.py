@@ -4,10 +4,14 @@ import json
 import os
 import pprint
 import sys
+import urllib.request
 
 import pandas as pd
 from sklearn.datasets import fetch_mldata
 import tensorflow as tf
+from runipy.notebook_runner import NotebookRunner
+from IPython.nbformat.current import read, write
+import nbconvert
 
 from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
@@ -46,6 +50,8 @@ def make_parser():
   summarize_parser = subparsers.add_parser('summarize')
   summarize_parser.add_argument('--data', required=True)
   subparsers.add_parser('fetch_mnist')
+  subparsers.add_parser('fetch_svhn')
+  subparsers.add_parser('notebooks')
   return parser
 
 def inspect(env, loader, args):
@@ -126,6 +132,34 @@ def fetch_mnist(env, loader, args):
   data_home = env.resolve('data')
   fetch_mldata('MNIST original', data_home=data_home)
 
+def fetch_svhn(env, loader, args):
+  for role in ['train', 'test', 'extra']:
+    filename = role + '_32x32.mat'
+    path = os.path.join(loader.data_path, filename)
+    if os.path.isfile(path):
+      print('found', role)
+    else:
+      print('fetching', role)
+      url = 'http://ufldl.stanford.edu/housenumbers/' + filename
+      urllib.request.urlretrieve(url, path)
+
+def notebooks(env, loader, args):
+  nb_path = env.resolve('notebooks')
+  res_path = env.resolve('results')
+  for filename in os.listdir(nb_path):
+    if filename.endswith('.ipynb'):
+      nb_name = filename.split('.')[0]
+      print('running', nb_name)
+      src_path = os.path.join(nb_path, filename)
+      dest_path = os.path.join(res_path, filename)
+      # html_path = os.path.join(res_path, nb_name + '.html')
+      with open(src_path, 'r') as f:
+        notebook = read(f, 'json')
+        r = NotebookRunner(notebook, working_dir=nb_path)
+        r.run_notebook()
+        with open(dest_path, 'w') as g:
+          write(r.nb, g)
+
 OPS = {
   'inspect': inspect,
   'train': run_train,
@@ -133,7 +167,9 @@ OPS = {
   'report': report,
   'curve': curve,
   'summarize': summarize,
-  'fetch_mnist': fetch_mnist
+  'fetch_mnist': fetch_mnist,
+  'fetch_svhn': fetch_svhn,
+  'notebooks': notebooks
 }
 
 def sub_main(env, loader, args):

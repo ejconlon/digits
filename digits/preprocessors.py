@@ -25,6 +25,7 @@ def color(data):
   return data._replace(X=X)
 
 PREPROCESSORS = {
+    'noop': lambda data: data,
     'flat-gray': flat_gray,
     'gray': gray,
     'color': color

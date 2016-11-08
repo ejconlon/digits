@@ -8,3 +8,4 @@ sklearn
 tensorflow
 json-tricks
 ipython
+runipy
