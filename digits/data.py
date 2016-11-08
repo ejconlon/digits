@@ -146,6 +146,16 @@ class Loader:
     elif name == 'crop-test-big':
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
+    elif name == 'crop-train-huge':
+      orig = self.read_cropped('extra')
+      assert orig.X.shape[0] == 531131
+      proc = prepare_cropped(orig, shuffle=True, then_keep=318000, random_state=random_state)
+    elif name == 'crop-valid-huge':
+      orig = self.read_cropped('extra')
+      proc = prepare_cropped(orig, shuffle=True, then_drop=318000, then_keep=106000, random_state=random_state)
+    elif name == 'crop-test-huge':
+      orig = self.read_cropped('extra')
+      proc = prepare_cropped(orig, shuffle=True, then_drop=424000, then_keep=106000, random_state=random_state)
     elif name == 'mnist-train':
       orig = self.read_mnist()
       assert orig.X.shape[0] == 70000

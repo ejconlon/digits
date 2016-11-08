@@ -13,11 +13,11 @@ PARAMS = {
     'mnist': Namespace(
       num_classes = 10,
       # regularization param 0.0001 for mnist, 0.00000001 for crop?
-      lam =  0.00000001,
+      lam =  0.0001,
       # learning rate
       alpha = 0.001,
       # TODO 200k for mnist
-      training_iters = 10000,  
+      training_iters = 50000,  
       # number of examples per descent
       batch_size = 128,
       # number of batches per display/validation step
@@ -30,7 +30,15 @@ PARAMS = {
       fcs = [1024]
     ),
     'crop': Namespace(
-      num_classes = 10
+      num_classes = 10,
+      lam =  0.0001,
+      alpha = 0.0003,
+      training_iters = 200000,
+      batch_size = 128,
+      display_step = 10,
+      dropout = 0.75,
+      convs = [(5, 32), (5, 64)],
+      fcs = [1024]
     )
   }
 }

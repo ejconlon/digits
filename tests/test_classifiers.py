@@ -64,17 +64,20 @@ def run_model(model, variant, train_data_name, test_data_name, preprocessor, par
   # Now check that we've correctly predicted with the serialized model
   np.testing.assert_array_equal(valid_metrics.pred, test_metrics.pred)
 
-def test_baseline_crop():
-  run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small', 'flat-gray', 'crop')
+# def test_baseline_crop():
+#   run_model('baseline', 'crop', 'crop-train-small', 'crop-test-small', 'flat-gray', 'crop')
 
-def test_baseline_mnist():
-  run_model('baseline', 'mnist', 'mnist-train', 'mnist-test', 'flat-gray', 'mnist')
+# def test_baseline_mnist():
+#   run_model('baseline', 'mnist', 'mnist-train', 'mnist-test', 'flat-gray', 'mnist')
 
-#def test_tf_crop():
-#  run_model('tf', 'crop', 'crop-train-big', 'crop-test-big', 'crop', 'crop')
+# def test_tf_crop_huge():
+#   run_model('tf', 'crop-huge', 'crop-train-huge', 'crop-test-huge', 'color', 'crop')
+
+def test_tf_crop_big():
+  run_model('tf', 'crop-big', 'crop-train-big', 'crop-test-big', 'color', 'crop')
 
 #def test_tf_crop_small():
-#  run_model('tf', 'crop', 'crop-train-small', 'crop-test-small', 'color', 'crop')
+#  run_model('tf', 'crop-small', 'crop-train-small', 'crop-test-small', 'color', 'crop')
 
-def test_tf_mnist():
-  run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color', 'mnist')
+# def test_tf_mnist():
+#   run_model('tf', 'mnist', 'mnist-train', 'mnist-test', 'color', 'mnist')
