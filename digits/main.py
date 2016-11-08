@@ -4,6 +4,7 @@ import json
 import os
 import pprint
 import sys
+import tempfile
 import urllib.request
 
 import pandas as pd
@@ -151,14 +152,20 @@ def notebooks(env, loader, args):
       nb_name = filename.split('.')[0]
       print('running', nb_name)
       src_path = os.path.join(nb_path, filename)
-      dest_path = os.path.join(res_path, filename)
-      # html_path = os.path.join(res_path, nb_name + '.html')
+      html_path = os.path.join(res_path, nb_name + '.html')
       with open(src_path, 'r') as f:
         notebook = read(f, 'json')
         r = NotebookRunner(notebook, working_dir=nb_path)
         r.run_notebook()
-        with open(dest_path, 'w') as g:
+        dest_path = tempfile.mkstemp()
+        t = tempfile.NamedTemporaryFile()
+        with open(t.name, 'w') as g:
           write(r.nb, g)
+        exporter = nbconvert.HTMLExporter()
+        body, resources = exporter.from_filename(t.name)
+        with open(html_path, 'w') as g:
+          g.write(body)
+        
 
 OPS = {
   'inspect': inspect,
