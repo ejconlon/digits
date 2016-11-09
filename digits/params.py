@@ -136,3 +136,14 @@ CONFIGS = [
     search_size=10
   )
 ]
+
+def assert_no_dupes():
+  s = set()
+  for c in CONFIGS:
+    k = (c.model, c.variant)
+    if k in s:
+      raise Exception('Dupe config key: ' + str(k))
+    else:
+      s.add(k)
+
+assert_no_dupes()

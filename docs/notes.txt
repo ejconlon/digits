@@ -32,3 +32,10 @@ Arrangment:
 Data
 Preprocessing
 Model
+
+next features:
+assert no config dupes
+search among pre-cooked (array of namespaces instead of namespace of arrays)
+learning rate decay
+freeze good configs/params?
+
