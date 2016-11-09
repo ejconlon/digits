@@ -42,6 +42,7 @@ def make_parser():
   train_parser.add_argument('--param-set', required=True)
   train_parser.add_argument('--search-set')
   train_parser.add_argument('--search-size', type=int)
+  train_parser.add_argument('--search-default', type=bool, default=True)
   train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)
@@ -116,16 +117,17 @@ def run_train(env, loader, args):
   best_variant = None
   original_acc = None
 
-  print('running default variant')
-  final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
-  if valid_metrics is not None:
-    write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics)
-  write_params(env, args.model, args.variant, final_params)
-
-  if valid_metrics is not None:
-    original_acc = valid_metrics.accuracy()
-    best_valid_acc = original_acc
-    best_variant = args.variant
+  if args.search_set is None or args.search_default:
+    print('running default variant')
+    final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
+    write_params(env, args.model, args.variant, final_params)
+    if valid_metrics is not None:
+      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics)
+      original_acc = valid_metrics.accuracy()
+      best_valid_acc = original_acc
+      best_variant = args.variant
+  else:
+    print('skipping default variant')
 
   if args.search_set is not None:
     assert args.search_size is not None
@@ -135,8 +137,8 @@ def run_train(env, loader, args):
       variant_i = args.variant + '__' + str(i)
       cand_params, cand_valid_metrics = \
         run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set)
-      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics)
       write_params(env, args.model, variant_i, cand_params)
+      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics)
       cand_valid_acc = cand_valid_metrics.accuracy()
       if best_valid_acc is None or cand_valid_acc > best_valid_acc:
         print('Better variant {} accuracy {}'.format(variant_i, cand_valid_acc))
@@ -228,7 +230,7 @@ def notebooks(env, loader, args):
 
 def run_model(
   env, loader, model, variant, train_data_name, valid_data_name, test_data_name,
-  preprocessor, param_set, search_set=None, search_size=None, check_ser=False, random_state=None):
+  preprocessor, param_set, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
   train_args = argparse.Namespace(
     random_state=random_state,
     op='train',
@@ -240,7 +242,8 @@ def run_model(
     preprocessor=preprocessor,
     param_set=param_set,
     search_set=search_set,
-    search_size=search_size
+    search_size=search_size,
+    search_default=search_default
   )
   sub_main(env, loader, train_args)
 
