@@ -194,6 +194,10 @@ class TFModel(Model):
         alpha = params.alpha
         print('initial alpha', alpha)
 
+        break_acc = 0.0
+        break_count = 0
+        assert params.break_display_step is None or params.break_display_step > 0
+
         while step * params.batch_size < params.training_iters:
           dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
           feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout, 'alpha:0': alpha}
@@ -212,6 +216,17 @@ class TFModel(Model):
               row[role + '_acc'] = display_acc
             writer.add_summary(display_summaries, step)
             csv_writer.writerow(row)
+            if valid_data is not None and params.break_display_step is not None:
+              acc = row['valid_acc']
+              if acc > break_acc:
+                print('accuracy improved to', acc)
+                break_acc = acc
+                break_count = 0
+              else:
+                break_count += 1
+              if break_count >= params.break_display_step:
+                print('breaking early')
+                break
           if params.decay_step is not None:
             if step > 0 and step % params.decay_step == 0:
               alpha *= params.decay_factor

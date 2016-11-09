@@ -20,6 +20,8 @@ PARAMS = {
       decay_factor = 0.66,
       # update alpha after this number of steps
       decay_step = 100,
+      # number of display steps to break if validation doesn't improve
+      break_display_step = 10,
       # TODO 150k for mnist
       training_iters = 150000,  
       # number of examples per descent
