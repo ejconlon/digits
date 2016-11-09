@@ -9,6 +9,7 @@ import tempfile
 import urllib.request
 import warnings
 
+import numpy as np
 import pandas as pd
 from sklearn.datasets import fetch_mldata
 import tensorflow as tf
@@ -23,7 +24,7 @@ with warnings.catch_warnings():
 from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
-from .params import PARAMS, SEARCH
+from .params import PARAMS, SEARCH, CONFIGS
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -49,6 +50,10 @@ def make_parser():
   test_parser.add_argument('--preprocessor')
   test_parser.add_argument('--param-set', required=True)
   test_parser.add_argument('--random-state', type=int)
+  drive_parser = subparsers.add_parser('drive')
+  drive_parser.add_argument('--model', required=True)
+  drive_parser.add_argument('--variant')
+  drive_parser.add_argument('--random-state', type=int)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
@@ -220,8 +225,51 @@ def notebooks(env, loader, args):
         body, resources = exporter.from_filename(t.name)
         with open(html_path, 'w') as g:
           g.write(body)
-        
 
+def run_model(
+  env, loader, model, variant, train_data_name, valid_data_name, test_data_name,
+  preprocessor, param_set, search_set=None, search_size=None, check_ser=False, random_state=None):
+  train_args = argparse.Namespace(
+    random_state=random_state,
+    op='train',
+    model=model,
+    variant=variant,
+    train_data=train_data_name,
+    valid_data=valid_data_name,
+    test_data=test_data_name,
+    preprocessor=preprocessor,
+    param_set=param_set,
+    search_set=search_set,
+    search_size=search_size
+  )
+  sub_main(env, loader, train_args)
+
+  if check_ser and test_data_name is not None:
+    test_metrics1 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
+
+    test_args = argparse.Namespace(
+      random_state=random_state,
+      op='test',
+      model=model,
+      variant=variant,
+      test_data=test_data_name,
+      preprocessor=preprocessor,
+      param_set=param_set
+    )
+    sub_main(env, loader, test_args)
+
+    test_metrics2 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
+
+    # Sanity check, they should have run on the same dataset
+    np.testing.assert_array_equal(test_metrics1.gold, test_metrics2.gold)
+
+    # Now check that we've correctly predicted with the serialized model
+    np.testing.assert_array_equal(test_metrics1.pred, test_metrics2.pred)
+
+def drive(env, loader, args):
+  config = next(c for c in CONFIGS if c.model == args.model and c.variant == args.variant)
+  run_model(env, loader, random_state=args.random_state, **config.__dict__)
+        
 OPS = {
   'inspect': inspect,
   'train': run_train,
@@ -232,7 +280,8 @@ OPS = {
   'summarize': summarize,
   'fetch_mnist': fetch_mnist,
   'fetch_svhn': fetch_svhn,
-  'notebooks': notebooks
+  'notebooks': notebooks,
+  'drive': drive
 }
 
 def sub_main(env, loader, args):
