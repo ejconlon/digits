@@ -8,7 +8,7 @@ import random
 import shutil
 
 import numpy as np
-from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 import tensorflow as tf
 
 from .common import one_hot, product
@@ -50,23 +50,25 @@ class Model(metaclass=ABCMeta):
 class BaselineModel(Model):
   def train(self, params, train_data, valid_data=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
-    clf = LogisticRegression()
+    clf = SVC()
+    print('baseline fitting')
     clf.fit(train_data.X, train_data.y)
+    print('baseline pickling')
     with open(clf_file, 'wb') as f:
       pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
-    train_pred = clf.predict(train_data.X)
-    train_hot = one_hot(params.num_classes, train_pred)
     if valid_data is not None:
+      print('baseline predicting valid')
       valid_pred = clf.predict(valid_data.X)
-      valid_hot = one_hot(params.num_classes, valid_pred)
+      return one_hot(params.num_classes, valid_pred)
     else:
-      valid_hot = None
-    return (train_hot, valid_hot)
+      return None
 
   def test(self, params, test_data):
     clf_file = self._resolve_model_file('model.clf')
+    print('baseline unpickling')
     with open(clf_file, 'rb') as f:
       clf = pickle.load(f)
+    print('baseline predicting test')
     test_pred = clf.predict(test_data.X)
     return one_hot(params.num_classes, test_pred)
 

@@ -3,7 +3,7 @@ from skimage.color import rgb2gray
 import skimage.feature
 
 from .common import product
-from .images import img_prepare_all
+from .images import img_prepare_all, img_map
 
 def flat_gray(data):
   X = data.X
@@ -25,9 +25,8 @@ def color(data):
 
 def hog(data):
   X = data.X
-  X = rgb2gray(X)
-  X = X.astype(np.float32)
-  X = skimage.feature.hog(X, transform_sqrt=True)
+  fn = lambda img: skimage.feature.hog(rgb2gray(img), transform_sqrt=True)
+  X = img_map(fn, X)
   return data._replace(X=X)
 
 PREPROCESSORS = {

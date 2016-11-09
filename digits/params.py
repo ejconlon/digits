@@ -91,7 +91,7 @@ CONFIGS = [
     train_data_name='crop-train-small',
     valid_data_name=None,
     test_data_name='crop-test-small',
-    preprocessor='flat-gray',
+    preprocessor='hog',
     param_set='crop'
   ),
 
@@ -99,9 +99,9 @@ CONFIGS = [
     model='baseline',
     variant='mnist',
     train_data_name='mnist-train',
-    valid_data_name=None,
+    valid_data_name='mnist-valid',
     test_data_name='mnist-test',
-    preprocessor='flat-gray',
+    preprocessor='hog',
     param_set='mnist'
   ),
 
