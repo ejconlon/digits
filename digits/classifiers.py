@@ -255,7 +255,7 @@ MODELS = {
 }
 
 # TODO take num_classes in both of these
-def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None):
+def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None, search_index=None):
   model = MODELS[name](env, name, variant)
   orig_params = PARAMS[name][param_set]  
   if search_set is not None:
@@ -263,8 +263,13 @@ def run_train_model(env, name, variant, train_data, valid_data, param_set, searc
     params = Namespace()
     for (k, v) in orig_params._get_kwargs():
       setattr(params, k, v)
-    for (k, vs) in search._get_kwargs():
-      setattr(params, k, random.choice(vs))
+    if type(search) == list:
+      override_params = search[search_index]
+      for (k, v) in override_params._get_kwargs():
+        setattr(params, k, v)
+    else:
+      for (k, vs) in search._get_kwargs():
+        setattr(params, k, random.choice(vs))
   else:
     params = orig_params
   valid_pred = model.train(params, train_data, valid_data)

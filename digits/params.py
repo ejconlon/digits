@@ -17,7 +17,7 @@ PARAMS = {
       # learning rate
       alpha = 0.003,
       # TODO 150k for mnist
-      training_iters = 10000,  
+      training_iters = 150000,  
       # number of examples per descent
       batch_size = 128,
       # number of examples per display step
@@ -58,9 +58,25 @@ SEARCH = {
       fcs = [[1024], [512]],
       convs = [[(5, 32), (5, 64)], [(5, 64), (5, 128)]],
       dropout = [.65, .75, .85]
-    )
+    ),
+    'mnist2': [
+      Namespace(
+        convs = [(5, 64), (5, 128)]
+      )
+    ]
   }
 }
+
+def find_search_size(model, search_set):
+  s = SEARCH[model][search_set]
+  if type(s) == list:
+    return len(s)
+  else:
+    raise Exception('Search set not a list: ' + model + ' / ' + search_set)
+
+def has_search_size(model, search_set):
+  s = SEARCH[model][search_set]
+  return type(s) == list
 
 CONFIGS = [
   Namespace(
@@ -133,7 +149,7 @@ CONFIGS = [
     preprocessor='color',
     param_set='mnist',
     search_set='mnist',
-    search_size=10
+    search_size=2
   )
 ]
 

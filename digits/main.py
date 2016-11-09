@@ -24,7 +24,7 @@ with warnings.catch_warnings():
 from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
-from .params import PARAMS, SEARCH, CONFIGS
+from .params import PARAMS, SEARCH, CONFIGS, find_search_size, has_search_size
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -117,6 +117,13 @@ def run_train(env, loader, args):
   best_variant = None
   original_acc = None
 
+  search_size = args.search_size
+  if args.search_set is not None:
+    if search_size is None:
+      search_size = find_search_size(args.model, args.search_set)
+    else:
+      assert not has_search_size(args.model, args.search_set)
+
   if args.search_set is None or args.search_default:
     print('running default variant')
     final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
@@ -130,13 +137,12 @@ def run_train(env, loader, args):
     print('skipping default variant')
 
   if args.search_set is not None:
-    assert args.search_size is not None
-    assert args.search_size > 0
+    assert search_size > 0
     assert valid_proc is not None
-    for i in range(args.search_size):
+    for i in range(search_size):
       variant_i = args.variant + '__' + str(i)
       cand_params, cand_valid_metrics = \
-        run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set)
+        run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i)
       write_params(env, args.model, variant_i, cand_params)
       write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics)
       cand_valid_acc = cand_valid_metrics.accuracy()
