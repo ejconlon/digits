@@ -109,6 +109,7 @@ def run_train(env, loader, args):
 
   best_valid_acc = None
   best_variant = None
+  original_acc = None
 
   print('running default variant')
   final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
@@ -117,7 +118,8 @@ def run_train(env, loader, args):
   write_params(env, args.model, args.variant, final_params)
 
   if valid_metrics is not None:
-    best_valid_acc = valid_metrics.accuracy()
+    original_acc = valid_metrics.accuracy()
+    best_valid_acc = original_acc
     best_variant = args.variant
 
   if args.search_set is not None:
@@ -139,13 +141,14 @@ def run_train(env, loader, args):
         valid_metrics = cand_valid_metrics
     assert best_variant is not None
     if best_variant == args.variant:
-      print('Best variant is default variant')
+      print('Best variant is default variant, {}'.format(original_acc))
     else:
-      print('Best variant', best_variant) 
+      print('Best variant {}, {} > {}'.format(best_variant, best_valid_acc, original_acc)) 
       src_path = env.resolve_model(args.model, variant_i)
       dest_path = env.resolve_model(args.model, args.variant)
       shutil.rmtree(dest_path)
       shutil.copytree(src_path, dest_path)
+      pprint.pprint(final_params)
 
   if args.test_data is not None:
     test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)

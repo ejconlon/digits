@@ -17,7 +17,7 @@ PARAMS = {
       # learning rate
       alpha = 0.001,
       # TODO 200k for mnist
-      training_iters = 10000,  
+      training_iters = 200000,  
       # number of examples per descent
       batch_size = 128,
       # number of examples per display step

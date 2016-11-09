@@ -147,5 +147,5 @@ def test_tf_mnist_search():
     preprocessor='color',
     param_set='mnist',
     search_set='mnist',
-    search_size=2
+    search_size=10
   )
