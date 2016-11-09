@@ -130,6 +130,7 @@ class TFModel(Model):
       dataset = tf.placeholder(tf.float32, shape=[None, width, width, depth], name='dataset')
       labels = tf.placeholder(tf.int32, shape=[None, params.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+      alpha = tf.placeholder(tf.float32, name='alpha')
     
       logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, depth)
 
@@ -139,7 +140,7 @@ class TFModel(Model):
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + params.lam * reg
 
-      optimizer = tf.train.AdamOptimizer(learning_rate=params.alpha).minimize(loss)
+      optimizer = tf.train.AdamOptimizer(learning_rate=alpha).minimize(loss)
 
       prediction = tf.nn.softmax(logits, name='prediction')
       correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
@@ -187,9 +188,15 @@ class TFModel(Model):
         step = 0
         num_examples = train_data.X.shape[0]
 
+        assert params.alpha is not None
+        assert (params.decay_step is None and params.decay_factor is None) or \
+               (params.decay_step is not None and params.decay_factor is not None)
+        alpha = params.alpha
+        print('initial alpha', alpha)
+
         while step * params.batch_size < params.training_iters:
           dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
-          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout}
+          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout, 'alpha:0': alpha}
           session.run([optimizer], feed_dict=feed_dict)
           if step % params.display_step == 0:
             seen = step * params.batch_size
@@ -205,6 +212,10 @@ class TFModel(Model):
               row[role + '_acc'] = display_acc
             writer.add_summary(display_summaries, step)
             csv_writer.writerow(row)
+          if params.decay_step is not None:
+            if step > 0 and step % params.decay_step == 0:
+              alpha *= params.decay_factor
+              print('decaying alpha to', alpha)
           step += 1
 
         print('saving')

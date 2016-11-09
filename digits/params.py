@@ -16,6 +16,10 @@ PARAMS = {
       lam =  0.001,
       # learning rate
       alpha = 0.003,
+      # decay alpha by this every n steps
+      decay_factor = 0.66,
+      # update alpha after this number of steps
+      decay_step = 100,
       # TODO 150k for mnist
       training_iters = 150000,  
       # number of examples per descent
@@ -133,7 +137,7 @@ CONFIGS = [
     model='tf',
     variant='mnist',
     train_data_name='mnist-train',
-    valid_data_name=None,
+    valid_data_name='mnist-valid',
     test_data_name='mnist-test',
     preprocessor='color',
     param_set='mnist',
