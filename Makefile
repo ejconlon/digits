@@ -7,6 +7,10 @@ notebook:
 run:
 	python -m digits.main $(ARGS)
 
+fetch:
+	@$(MAKE) run ARGS="fetch_mnist"
+	@$(MAKE) run ARGS="fetch_svhn"
+
 clean:
 	rm -rf pickled/*
 	rm -rf logs/*
