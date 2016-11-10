@@ -8,9 +8,8 @@ machine:
 
 dependencies:
   override:
-    - apt-get install graphviz texlive-full inkscape python-numpy
-    - pip install -r requirements.txt
+    - make deps-trusty
 
 test:
   override:
-    make clean fetch test-verbose
+    - make all

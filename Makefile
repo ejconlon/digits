@@ -9,6 +9,10 @@ init:
 	# you may need to pip install some of these
 	conda install --file requirements.txt
 
+deps-trusty:
+	apt-get install graphviz texlive-full inkscape python-numpy
+	pip install -r requirements.txt
+
 notebook:
 	jupyter notebook notebooks/
 
@@ -19,7 +23,14 @@ fetch:
 	@$(MAKE) run ARGS="fetch_mnist"
 	@$(MAKE) run ARGS="fetch_svhn"
 
+results-gen:
+	@$(MAKE) run ARGS="notebooks"
+
 clean:
+	mkdir -p data
+	mkdir -p pickled
+	mkdir -p logs
+	mkdir -p results
 	rm -rf pickled/*
 	rm -rf logs/*
 	rm -rf results/*
@@ -44,3 +55,5 @@ report-gen: report-clean
 
 report-preview: report-gen
 	cd report && open report.pdf
+
+all: clean fetch test-verbose results-gen report-gen
