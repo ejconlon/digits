@@ -1,4 +1,12 @@
 init:
+	# deps for report generation
+	# provides `dot` command
+	brew install graphviz
+	# provides `pdflatex` and `biber` commands
+	brew cask install mactex
+	# provides `inkscape` command
+	brew cask install inkscape
+	# you may need to pip install some of these
 	conda install --file requirements.txt
 
 notebook:
@@ -32,7 +40,7 @@ report-clean:
 	cd report && rm -f report.{aux,log,out,toc,bcf,bbl,blg,run.xml}
 
 report-gen: report-clean
-	cd report && pdflatex report.tex && biber report && pdflatex report.tex && pdflatex report.tex
+	cd report && pdflatex --shell-escape report.tex && biber report && pdflatex --shell-escape report.tex && pdflatex --shell-escape report.tex
 
 report-preview: report-gen
 	cd report && open report.pdf

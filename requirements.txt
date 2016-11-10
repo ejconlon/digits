@@ -9,3 +9,4 @@ tensorflow
 json-tricks
 ipython
 runipy
+graphviz

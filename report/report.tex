@@ -11,6 +11,7 @@
 \usepackage{graphicx} % Add pictures to your document
 \usepackage{listings} % Source code formatting and highlighting
 \usepackage{csquotes}
+\usepackage{svg}
 \usepackage[
 backend=biber,
 style=alphabetic,
@@ -19,6 +20,7 @@ sorting=ynt
 
 \addbibresource{report.bib}
 \setlength{\parskip}{1em}
+\setsvg{svgpath = /Users/charolastra/school/digits/results/}
 
 % Main document
 % ---
@@ -44,9 +46,24 @@ MNIST is a classic labeled dataset consisting of single handwritten digits (0-9)
 
 SVHN is a labeled dataset that comes from images of house numbers collected by Google's Street View project. The digits have a wide variety of foreground and background colors, textures, noise, distractions, orientations, and scales. There are two formats provided: the first includes raw images with sets of bounding rectangles, and the second includes a more MNIST-like centered digits. The models here consume only the second format, but I will say more about this classifiers applicability to the first. Overall, this dataset contains almost 8 times more examples than MNIST.
 
-\section{Design} 
+\section{Design, Exploration, and Evaluation}
 
-\section{Exploration and Evaluation}
+There are a few guiding principles to the implementation of this application:
+
+\begin{itemize}
+\item It must be possible train, test, explore, and evaluate independently
+\item Model selection should be an automated part of the training process
+\item Common metrics and visualizations should apply to any model and dataset
+\end{itemize}
+
+\begin{figure}[htbp]
+  \centering
+  \includesvg[height=\textheight,width=\columnwidth]{pipeline}
+  \caption{Pipeline stages}
+  \label{fig:pipeline}
+\end{figure}
+
+See Figure \ref{fig:pipeline} for a visualization of the pipeline.
 
 \section{Conventional Solution}
 
