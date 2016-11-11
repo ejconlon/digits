@@ -10,7 +10,6 @@ dependencies:
   override:
     - sudo apt-get update
     - make deps-jessie
-    - sudo apt-get autoremove -y
   cache_directories:
     - data
 

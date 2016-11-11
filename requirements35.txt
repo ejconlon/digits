@@ -1,0 +1,13 @@
+numpy
+matplotlib
+pandas
+pillow
+pytest
+scipy
+scikit-image
+sklearn
+tensorflow
+json-tricks
+ipython
+runipy
+graphviz

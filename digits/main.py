@@ -6,8 +6,14 @@ import pprint
 import shutil
 import sys
 import tempfile
-import urllib2
 import warnings
+
+try:
+  # Py 3
+  from urllib.request import urlopen
+except ImportError:
+  # Py 2
+  from urllib2 import urlopen
 
 import numpy as np
 import pandas as pd
@@ -210,7 +216,7 @@ def fetch_svhn(env, loader, args):
     else:
       print('fetching', role)
       url = 'http://ufldl.stanford.edu/housenumbers/' + filename
-      response = urllib2.urlopen(url)
+      response = urlopen(url)
       with open(path, 'wb') as f:
         f.write(response.read())
 
