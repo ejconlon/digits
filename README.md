@@ -16,12 +16,12 @@ This project has been built and tested on macOS with Homebrew, Ubuntu Trusty, an
     vagrant up
     # SSH into the running VM
     vagrant ssh
-    # Now on the virtual machine
+    # Now on the virtual machine cd into the project dir
     cd /digits
     # Fetch data
     make fetch
     # Run the application
-    make all
+    make clean all
     # Exit the VM
     exit
     # Now on your machine again, remove the VM
