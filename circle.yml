@@ -2,10 +2,6 @@ machine:
   timezone:
     America/Los_Angeles # Set the timezone
 
-  python:
-    version:
-      2.7.12
-
 dependencies:
   override:
     - make deps-linux
