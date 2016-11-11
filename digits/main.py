@@ -197,7 +197,7 @@ def params(env, loader, args):
     pprint.pprint(f.read())
 
 def summarize(env, loader, args):
-  orig, proc = loader.load_data(args.data)
+  orig, proc = loader.load_data(args.data, preprocessor='noop', random_state=None)
   print('orig X', orig.X.shape)
   print('orig y', orig.y.shape)
   print('proc X', proc.X.shape)

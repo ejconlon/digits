@@ -26,8 +26,8 @@ This project has been built and tested on macOS with Homebrew, Ubuntu Trusty, an
     exit
     # Now on your machine again, remove the VM
     vagrant destroy -f
-    # Optionally remove the data you've downloaded
-    make nuke
+    # Optionally remove the data you've downloaded and any results
+    make clean nuke
 
 PLEASE NOTE: The `make fetch` step will download about 1.5 GB of SVHN and MNIST data!
 

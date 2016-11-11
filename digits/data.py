@@ -143,7 +143,10 @@ class Loader:
     elif name == 'crop-train-big':
       orig = self.read_cropped('train')
       assert orig.X.shape[0] == 73257
-      proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_keep=60000, random_state=random_state)
+    elif name == 'crop-valid-big':
+      orig = self.read_cropped('train')
+      proc = prepare_cropped(orig, shuffle=True, then_drop=60000, random_state=random_state)
     elif name == 'crop-test-big':
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
