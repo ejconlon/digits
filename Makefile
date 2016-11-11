@@ -15,8 +15,10 @@ deps-mac:
 
 deps-jessie:
 	# installs deps for execution and report generation on debian jessie
-	sudo apt-get install graphviz texlive-full inkscape python-pip python-numpy cython -y
-	pip install -r requirements.txt
+	sudo apt-get install graphviz texlive-full inkscape python-numpy python-matplotlib python-pandas python-skimage python-sklearn python-zmq -y
+	#sudo pip install cython
+	sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0-cp27-none-linux_x86_64.whl
+	sudo pip install -r requirements.txt
 
 notebook:
 	jupyter notebook notebooks/
