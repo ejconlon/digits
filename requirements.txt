@@ -11,3 +11,9 @@ json-tricks
 ipython
 runipy
 graphviz
+
+# Orphans from misbehaved modules
+enum
+ptyprocess
+wcwidth
+markupsafe

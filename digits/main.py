@@ -6,7 +6,7 @@ import pprint
 import shutil
 import sys
 import tempfile
-import urllib.request
+import urllib2
 import warnings
 
 import numpy as np
@@ -210,7 +210,9 @@ def fetch_svhn(env, loader, args):
     else:
       print('fetching', role)
       url = 'http://ufldl.stanford.edu/housenumbers/' + filename
-      urllib.request.urlretrieve(url, path)
+      response = urllib2.urlopen(url)
+      with open(path, 'wb') as f:
+        f.write(response.read())
 
 def notebooks(env, loader, args):
   nb_path = env.resolve('notebooks')

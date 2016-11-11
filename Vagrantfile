@@ -12,4 +12,7 @@ Vagrant.configure("2") do |config|
   config.vm.network :private_network, ip: "192.168.0.42"
   config.vm.synced_folder ".", "/digits", type: "virtualbox"
   config.vm.provision "shell", inline: $script
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
+  end
 end

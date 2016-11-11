@@ -16,7 +16,9 @@ from .images import img_select, img_rando, img_width, img_depth
 from .params import PARAMS, SEARCH
 from .metrics import Metrics
 
-class Model(metaclass=ABCMeta):
+class Model:
+  __metaclass__ = ABCMeta
+
   def __init__(self, env, name, variant):
     self.env = env
     self.name = name
