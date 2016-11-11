@@ -30,6 +30,7 @@ run:
 
 fetch:
 	mkdir -p data
+	mkdir -p pickled
 	@$(MAKE) run ARGS="fetch_mnist"
 	@$(MAKE) run ARGS="fetch_svhn"
 
