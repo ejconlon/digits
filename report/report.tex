@@ -36,13 +36,13 @@ sorting=ynt
 
 \section{Introduction}
 
-Character recognition is a classic computer vision problem with many interesting variants. Even restricting ourselves to 10-digit classification still leaves much room for uncertainty and creativity. The Street View House Numbers dataset (SVHN) poses a such a classification problem that is generally considered to be tougher than the common MNIST dataset.
+Character recognition is a classic computer vision problem with many interesting variants. Even restricting ourselves to 10-digit classification still leaves much room for uncertainty and creativity. The Street View House Numbers dataset (SVHN) \cite{netzer2011reading} poses a such a classification problem that is generally considered to be tougher than the common MNIST dataset \cite{lecun1998mnist}.
 
 In this report I explain some simple approaches to classification of both datasets with both conventional and deep learning methods. The conventional baseline here is a Support Vector Classifier using Histogram of Gradients features, and the deep learning challenger is a Convolutional Neural Network. These solutions may not rank among the state of the art, but it is my hope that the details of end-to-end architecture and practical engineering considerations will prove to be interesting.
 
 \section{Datasets}
 
-MNIST is a classic labeled dataset consisting of single handwritten digits (0-9) that have been extensively processed. Each digit is centered alone within a 28x28 grid, and all pixel intensities are set to 0 (background) and 1 (foreground). These images don't require common preprocessing techniques such as rescaling, contrast enhancement, or whitening to be immediately useful. There are around 60,000 training examples and 10,000 test examples.
+MNIST is a classic labeled dataset consisting of single handwritten digits (0-9) that have been extensively processed. Each digit is centered alone within a 28x28 grid, and all pixel intensities are set to 0 (background) and 1 (foreground). These images do not require common preprocessing techniques such as rescaling, contrast enhancement, or whitening to be immediately useful. There are around 60,000 training examples and 10,000 test examples.
 
 SVHN is a labeled dataset that comes from images of house numbers collected by Google's Street View project. The digits have a wide variety of foreground and background colors, textures, noise, distractions, orientations, and scales. There are two formats provided: the first includes raw images with sets of bounding rectangles, and the second includes a more MNIST-like centered digits. The models here consume only the second format, but I will say more about this classifiers applicability to the first. Overall, this dataset contains almost 8 times more examples than MNIST.
 
