@@ -1,13 +1,13 @@
 machine:
   timezone:
-    America/Los_Angeles # Set the timezone
+    America/Los_Angeles
+  environment:
+    PATH: /usr/bin:$PATH
 
 dependencies:
   override:
-    - rm -rf virtualenvs venv .pyenv
     - make deps-linux
     - make fetch
-
   cache_directories:
     - data
 
