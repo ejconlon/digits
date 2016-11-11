@@ -17,7 +17,7 @@ deps-virtual:
 
 deps-jessie:
 	# installs deps for execution and report generation on debian jessie
-	sudo apt-get install graphviz texlive inkscape python-pip python-numpy python-matplotlib python-pandas python-zmq -y
+	sudo apt-get install graphviz python-pip python-numpy python-matplotlib python-pandas python-zmq -y
 	sudo pip install --upgrade pip
 	sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0-cp27-none-linux_x86_64.whl
 	sudo pip install -r requirements27.txt
@@ -65,4 +65,4 @@ report-gen: report-clean
 report-preview: report-gen
 	cd report && open report.pdf
 
-all: clean fetch test-verbose results-gen report-gen
+all: clean fetch test-verbose results-gen
