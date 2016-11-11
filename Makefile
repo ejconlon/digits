@@ -1,16 +1,21 @@
-init:
-	# deps for report generation
-	# provides `dot` command
+deps-mac:
+	# installs deps for execution and report generation on mac
+	# provides `dot` command for diagrams
 	brew install graphviz
-	# provides `pdflatex` and `biber` commands
+	# provides `pdflatex` and `biber` commands for latex to pdf conversion
 	brew cask install mactex
-	# provides `inkscape` command
+	# provides `inkscape` command for svg to latex conversion
 	brew cask install inkscape
+	# provides `vagrant
+	brew cask install virtualbox
+	# provides `vagrant` for 
+	brew cask install vagrant
 	# you may need to pip install some of these
 	conda install --file requirements.txt
 
-deps-trusty:
-	apt-get install graphviz texlive-full inkscape python-numpy
+deps-jessie:
+	# installs deps for execution and report generation on debian jessie
+	sudo apt-get install graphviz texlive-full inkscape python-pip python-numpy cython -y
 	pip install -r requirements.txt
 
 notebook:
