@@ -1,6 +1,5 @@
 $script = <<SCRIPT
 sudo apt-get update
-sudo apt-get upgrade -y
 cd /digits
 make deps-jessie
 sudo apt-get autoremove -y
