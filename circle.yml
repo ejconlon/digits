@@ -8,8 +8,7 @@ machine:
 
 dependencies:
   override:
-    - sudo apt-get update
-    - make deps-jessie
+    - make deps-linux
   cache_directories:
     - data
 

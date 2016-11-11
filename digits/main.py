@@ -239,8 +239,8 @@ def notebooks(env, loader, args):
           write(r.nb, g)
         exporter = nbconvert.HTMLExporter()
         body, resources = exporter.from_filename(t.name)
-        with open(html_path, 'w') as g:
-          g.write(body)
+        with open(html_path, 'wb') as g:
+          g.write(body.encode('utf-8'))
 
 def run_model(
   env, loader, model, variant, train_data_name, valid_data_name, test_data_name,

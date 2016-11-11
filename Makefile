@@ -8,18 +8,18 @@ deps-mac:
 	brew cask install inkscape
 	pip install cython
 	# PLEASE NOTE this installs for py3. You can change this...
-	pip install https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-0.11.0-py3-none-any.whl
+	pip install --ignore-installed https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-0.11.0-py3-none-any.whl
 	pip install -r requirements35.txt
 
 deps-virtual:
 	brew cask install virtualbox
 	brew cask install vagrant
 
-deps-jessie:
-	# installs deps for execution and report generation on debian jessie
+deps-linux:
+	# installs deps for execution and report generation on ubuntu trusty or debian jessie
 	sudo apt-get install graphviz python-pip python-numpy python-matplotlib python-pandas python-zmq -y
 	sudo pip install --upgrade pip
-	sudo pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0-cp27-none-linux_x86_64.whl
+	sudo pip install --ignore-installed https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-0.11.0-cp27-none-linux_x86_64.whl
 	sudo pip install -r requirements27.txt
 
 notebook:
