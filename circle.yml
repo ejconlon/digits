@@ -9,6 +9,8 @@ machine:
 dependencies:
   override:
     - make deps-linux
+    - make fetch
+
   cache_directories:
     - data
 
