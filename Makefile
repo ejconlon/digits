@@ -31,6 +31,8 @@ run:
 fetch:
 	mkdir -p data
 	mkdir -p pickled
+	mkdir -p logs
+	mkdir -p results
 	@$(MAKE) run ARGS="fetch_mnist"
 	@$(MAKE) run ARGS="fetch_svhn"
 
@@ -38,6 +40,7 @@ results-gen:
 	@$(MAKE) run ARGS="notebooks"
 
 clean:
+	mkdir -p data
 	mkdir -p pickled
 	mkdir -p logs
 	mkdir -p results
@@ -66,4 +69,4 @@ report-gen: report-clean
 report-preview: report-gen
 	cd report && open report.pdf
 
-all: clean test-verbose results-gen
+all: test-verbose results-gen
