@@ -2,6 +2,7 @@ import random
 import warnings
 
 import numpy as np
+import skimage.color
 import skimage.filters.rank
 import skimage.exposure
 import skimage.morphology
@@ -96,17 +97,16 @@ def img_contrast(img, out, selem, p):
 
 def img_gray_contrast_all(arr):
   p = 0.2
-  c = 3
-  selem = skimage.morphology.square(c)  
+  k = 3
+  selem = skimage.morphology.square(k)  
   with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
 
 def img_color_contrast_all(arr):
-  c = 7
-  # NOTE: this is a version that does global eq... use it?? it's very slow tho
-  # fn = lambda img: skimage.exposure.equalize_hist(skimage.exposure.equalize_adapthist(img, kernel_size=c))
-  fn = lambda img: skimage.exposure.equalize_adapthist(img, kernel_size=c)
+  k = 7
+  c = 0.01
+  fn = lambda img: skimage.color.rgb2hsv(skimage.exposure.equalize_adapthist(img, kernel_size=k, clip_limit=c))
   return img_map(fn, arr)
 
 def img_prepare_all(arr):

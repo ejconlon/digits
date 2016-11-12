@@ -41,19 +41,19 @@ PARAMS = {
     ),
     'crop': Namespace(
       num_classes = 10,
-      lam =  0.000001,
-      alpha = 0.003,
+      lam =  0.0001,
+      alpha = 0.0003,
       decay_factor = 0.66,
       decay_step = 100,
-      break_display_step = 20,
-      training_iters = 300000,
-      batch_size = 128,
-      display_size = 512,
+      break_display_step = 30,
+      training_iters = 500000,
+      batch_size = 1024,
+      display_size = 1024,
       display_step = 10,
-      dropout = 0.75,
-      convs = [(5, 32), (5, 64), (5, 64)],
+      dropout = 0.85,
+      convs = [(5, 32), (5, 64)],
       fcs = [1024],
-      use_rando = False
+      use_rando = True
     )
   }
 }
@@ -66,13 +66,28 @@ SEARCH = {
       alpha = [0.001, 0.003, 0.0001],
       fcs = [[1024], [512]],
       convs = [[(5, 32), (5, 64)], [(5, 64), (5, 128)]],
-      dropout = [.65, .75, .85]
+      dropout = [.65, .75, .85],
+      decay_factor = [0.66, 0.5],
+      decay_step = [100, 200]
     ),
     'mnist2': [
       Namespace(
         convs = [(5, 64), (5, 128)]
       )
-    ]
+    ],
+    'crop': Namespace(
+      lam = [0.0001, 0.0003, 0.001, 0.00003],
+      alpha = [0.001, 0.003, 0.0001, 0.0003, 0.00003],
+      fcs = [[1024], [512], [512, 512]],
+      convs = [
+        [(5, 32), (5, 64)],
+        [(5, 64), (5, 128)],
+        [(5, 32), (7, 64)],
+        [(5, 16), (7, 512)],
+        [(5, 32), (5, 64), (5, 64)]
+      ],
+      dropout = [.65, .75, .85, .95]
+    )
   }
 }
 
@@ -159,6 +174,18 @@ CONFIGS = [
     param_set='mnist',
     search_set='mnist',
     search_size=2
+  ),
+
+  Namespace(
+    model='tf',
+    variant='crop-big-search',
+    train_data_name='crop-train-big',
+    valid_data_name='crop-valid-big',
+    test_data_name='crop-test-big',
+    preprocessor='color',
+    param_set='crop',
+    search_set='crop',
+    search_size=20
   )
 ]
 
