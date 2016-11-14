@@ -120,22 +120,24 @@ def img_color_contrast_all(arr):
   c = 0.01
   # TODO re-enable contrast
   #fn = lambda img: skimage.color.rgb2hsv(skimage.exposure.equalize_adapthist(img, kernel_size=k, clip_limit=c))
-  fn = lambda img: skimage.color.rgb2hsv(img)
+  #fn = lambda img: skimage.color.rgb2hsv(img)
+  fn = lambda img: skimage.color.rgb2gray(img)
   return img_map(fn, arr)
 
 def img_prepare_all(arr):
   if len(arr.shape) == 3:
     # gray (mnist)
     arr = skimage.img_as_float(arr)
-    gray_shape = list(arr.shape)
-    gray_shape.append(1)
-    arr = arr.reshape(gray_shape)
-    return arr
   else:
     # color (svhn)
     assert len(arr.shape) == 4
     arr = img_color_contrast_all(arr)  # not necessary for mnist
     arr = skimage.img_as_float(arr)
+  if len(arr.shape) == 3:
+    gray_shape = list(arr.shape)
+    gray_shape.append(1)
+    arr = arr.reshape(gray_shape)
+  assert len(arr.shape) == 4
   return arr
 
 def img_select(X, y, batch_size, augment=None):

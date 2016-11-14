@@ -55,7 +55,8 @@ PARAMS = {
       dropout = 0.85,
       convs = [(5, 32), (5, 64)],
       fcs = [1024],
-      use_rando = True
+      use_rando = True,
+      max_acc = None
     )
   }
 }
