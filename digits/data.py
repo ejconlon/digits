@@ -122,13 +122,11 @@ class Loader:
   def load_data(self, name, preprocessor, random_state):
     """ Return tuple (orig, proc) """
     print('loading', name, preprocessor, random_state)
-    orig_file = os.path.join(self.pickled_path, '.'.join([name, str(random_state), 'orig', 'pickle']))
     proc_file = os.path.join(self.pickled_path, '.'.join([name, str(random_state), preprocessor, 'proc', 'pickle']))
-    if os.path.isfile(orig_file) and os.path.isfile(proc_file):
+    if os.path.isfile(proc_file):
       print('unpickling data')
-      orig = unpickle_from(orig_file)
       proc = unpickle_from(proc_file)
-      return (orig, proc)
+      return proc
     else:
       print('deriving data')
     if name == 'crop-train-small':
@@ -151,15 +149,23 @@ class Loader:
       orig = self.read_cropped('test')
       proc = prepare_cropped(orig, shuffle=True, random_state=random_state)
     elif name == 'crop-train-huge':
-      orig = self.read_cropped('extra')
-      assert orig.X.shape[0] == 531131
-      proc = prepare_cropped(orig, shuffle=True, then_keep=318000, random_state=random_state)
+      orig0 = self.read_cropped('extra')
+      orig1 = self.read_cropped('train')
+      orig = concat(orig0, orig1)
+      assert orig0.X.shape[0] == 531131
+      assert orig1.X.shape[0] == 73257
+      assert orig.X.shape[0] == 604388
+      assert orig.y.shape[0] == 604388
+      del orig0
+      del orig1
+      proc = prepare_cropped(orig, shuffle=True, then_keep=480000, random_state=random_state)
     elif name == 'crop-valid-huge':
-      orig = self.read_cropped('extra')
-      proc = prepare_cropped(orig, shuffle=True, then_drop=318000, then_keep=106000, random_state=random_state)
-    elif name == 'crop-test-huge':
-      orig = self.read_cropped('extra')
-      proc = prepare_cropped(orig, shuffle=True, then_drop=424000, then_keep=106000, random_state=random_state)
+      orig0 = self.read_cropped('extra')
+      orig1 = self.read_cropped('train')
+      orig = concat(orig0, orig1)
+      del orig0
+      del orig1
+      proc = prepare_cropped(orig, shuffle=True, then_drop=480000, random_state=random_state)
     elif name == 'mnist-train':
       orig = self.read_mnist()
       assert orig.X.shape[0] == 70000
@@ -172,12 +178,12 @@ class Loader:
       proc = prepare_cropped(orig, shuffle=True, then_drop=56000, then_keep=14000, random_state=random_state)
     else:
       raise Exception('Unknown dataset: ' + name)
+    del orig
     if preprocessor is not None:
       print('preprocessing with', preprocessor)
       proc = PREPROCESSORS[preprocessor](proc)
-    pickle_to(orig, orig_file)
     pickle_to(proc, proc_file)
-    return (orig, proc)
+    return proc
 
 
 class RandomStateContext:
@@ -202,6 +208,14 @@ class RandomStateContext:
       np.random.set_state(self.old_numpy_state)
       self.old_numpy_state = None
 
+def concat(data0, data1):
+  assert data0.X.shape[0] == data0.y.shape[0]
+  assert data1.X.shape[0] == data1.y.shape[0]
+  assert data0.offset == 0
+  assert data1.offset == 0
+  assert data0.inv_map is None
+  assert data1.inv_map is None
+  return Data(X = np.concatenate((data0.X, data1.X)), y = np.concatenate((data0.y, data1.y)), offset = 0, inv_map = None)
 
 # TODO consider distribution across all classes
 # also just consider delegating to train_test_split or whatever

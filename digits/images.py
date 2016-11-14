@@ -48,11 +48,23 @@ def img_map(f, arr):
   if is_single_img(arr):
     return f(arr)
   else:
-    return np.stack([f(arr[i]) for i in range(arr.shape[0])])
+    v0 = f(arr[0])
+    s = list(v0.shape)
+    s.insert(0, arr.shape[0])
+    v = np.empty(s)
+    v[0] = v0
+    for i in range(1, arr.shape[0]):
+      if i > 0 and i % 10000 == 0:
+        print('processing', i)
+      vi = f(arr[i])
+      v[i] = vi
+    return v
 
 def img_map_id(f, arr):
   out = np.empty(arr.shape)
   for i in range(arr.shape[0]):
+    if i > 0 and i % 10000 == 0:
+      print('processing', i)
     f(arr[i], out[i])
   return out
 
@@ -106,7 +118,9 @@ def img_gray_contrast_all(arr):
 def img_color_contrast_all(arr):
   k = 7
   c = 0.01
-  fn = lambda img: skimage.color.rgb2hsv(skimage.exposure.equalize_adapthist(img, kernel_size=k, clip_limit=c))
+  # TODO re-enable contrast
+  #fn = lambda img: skimage.color.rgb2hsv(skimage.exposure.equalize_adapthist(img, kernel_size=k, clip_limit=c))
+  fn = lambda img: skimage.color.rgb2hsv(img)
   return img_map(fn, arr)
 
 def img_prepare_all(arr):

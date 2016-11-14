@@ -109,13 +109,13 @@ def run_train(env, loader, args):
   assert args.model in MODELS
   assert args.model in PARAMS
   assert args.param_set in PARAMS[args.model]
-  _, train_proc = loader.load_data(args.train_data, args.preprocessor, args.random_state)
+  train_proc = loader.load_data(args.train_data, args.preprocessor, args.random_state)
   if args.valid_data is not None:
-    _, valid_proc = loader.load_data(args.valid_data, args.preprocessor, args.random_state)
+    valid_proc = loader.load_data(args.valid_data, args.preprocessor, args.random_state)
   else:
     valid_proc = None
   if args.test_data is not None:
-    _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
+    test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   else:
     test_proc = None
 
@@ -177,7 +177,7 @@ def run_test(env, loader, args):
   assert args.model in MODELS
   assert args.model in PARAMS
   assert args.param_set in PARAMS[args.model]
-  _, test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
+  test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
   write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
 
@@ -197,9 +197,7 @@ def params(env, loader, args):
     pprint.pprint(f.read())
 
 def summarize(env, loader, args):
-  orig, proc = loader.load_data(args.data, preprocessor='noop', random_state=None)
-  print('orig X', orig.X.shape)
-  print('orig y', orig.y.shape)
+  proc = loader.load_data(args.data, preprocessor='noop', random_state=None)
   print('proc X', proc.X.shape)
   print('proc y', proc.y.shape)
 
