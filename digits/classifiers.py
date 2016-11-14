@@ -231,7 +231,10 @@ class TFModel(Model):
               else:
                 break_count += 1
               if break_count >= params.break_display_step:
-                print('breaking early')
+                print('breaking early because not improving')
+                break
+              if params.max_acc is not None and acc >= params.max_acc:
+                print('breaking early because of artificial accuracy limit')
                 break
           # Now train for the round
           dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)

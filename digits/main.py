@@ -50,6 +50,7 @@ def make_parser():
   train_parser.add_argument('--search-set')
   train_parser.add_argument('--search-size', type=int)
   train_parser.add_argument('--search-default', type=bool, default=True)
+  train_parser.add_argument('--max-acc', type=float)
   train_parser.add_argument('--random-state', type=int)
   test_parser = subparsers.add_parser('test')
   test_parser.add_argument('--model', required=True)

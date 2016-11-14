@@ -120,7 +120,7 @@ class Loader:
     return Data(X=X, y=y, offset=0, inv_map=None)
 
   def load_data(self, name, preprocessor, random_state):
-    """ Return tuple (orig, proc) """
+    """ Return proc """
     print('loading', name, preprocessor, random_state)
     proc_file = os.path.join(self.pickled_path, '.'.join([name, str(random_state), preprocessor, 'proc', 'pickle']))
     if os.path.isfile(proc_file):

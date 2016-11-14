@@ -37,7 +37,9 @@ PARAMS = {
       # size of fully connected layers
       fcs = [1024],
       # randomize image rotation, etc
-      use_rando = True
+      use_rando = True,
+      # artifical max acc
+      max_acc = 0.9
     ),
     'crop': Namespace(
       num_classes = 10,
