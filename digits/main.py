@@ -1,5 +1,6 @@
 import argparse
 import csv
+import gc
 import json
 import os
 import pprint
@@ -131,6 +132,7 @@ def run_train(env, loader, args):
       assert not has_search_size(args.model, args.search_set)
 
   if args.search_set is None or args.search_default:
+    gc.collect()
     print('running default variant')
     final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
     write_params(env, args.model, args.variant, final_params)
@@ -146,6 +148,7 @@ def run_train(env, loader, args):
     assert search_size > 0
     assert valid_proc is not None
     for i in range(search_size):
+      gc.collect()
       variant_i = args.variant + '__' + str(i)
       cand_params, cand_valid_metrics = \
         run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i)
@@ -170,6 +173,7 @@ def run_train(env, loader, args):
       pprint.pprint(final_params)
 
   if args.test_data is not None:
+    gc.collect()
     test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
     write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
 

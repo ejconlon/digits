@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from argparse import Namespace
 from collections import namedtuple
 import csv
+import gc
 import os
 import pickle
 import random
@@ -202,10 +203,10 @@ class TFModel(Model):
         break_count = 0
         assert params.break_display_step is None or params.break_display_step > 0
 
-        while step * params.batch_size < params.training_iters:
-          dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
-          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout, 'alpha:0': alpha}
-          session.run([optimizer], feed_dict=feed_dict)
+        while step * params.batch_size < params.training_iters:   
+          gc.collect()
+          print('step', step)
+          # First evaluate
           if step % params.display_step == 0:
             seen = step * params.batch_size
             row = { 'step': step, 'seen': seen }
@@ -215,10 +216,11 @@ class TFModel(Model):
             for (role, (dataset, labels)) in sets:
               feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
               display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
+              display_loss, display_acc = session.run([loss, 'accuracy:0'], feed_dict=feed_dict)
               print('batch {} seen {} role {} loss {} acc {}'.format(step, seen, role, display_loss, display_acc))
               row[role + '_loss'] = display_loss
               row[role + '_acc'] = display_acc
-            writer.add_summary(display_summaries, step)
+            #writer.add_summary(display_summaries, step)
             csv_writer.writerow(row)
             if valid_data is not None and params.break_display_step is not None:
               acc = row['valid_acc']
@@ -231,6 +233,10 @@ class TFModel(Model):
               if break_count >= params.break_display_step:
                 print('breaking early')
                 break
+          # Now train for the round
+          dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
+          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout, 'alpha:0': alpha}
+          session.run([optimizer], feed_dict=feed_dict)
           if params.decay_step is not None:
             if step > 0 and step % params.decay_step == 0:
               alpha *= params.decay_factor
