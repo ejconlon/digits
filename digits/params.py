@@ -49,8 +49,8 @@ PARAMS = {
       decay_step = 100,
       break_display_step = 10,
       training_iters = 500000,
-      batch_size = 8192,
-      display_size = 8192,
+      batch_size = 4096,
+      display_size = 4096,
       display_step = 10,
       dropout = 0.85,
       convs = [(5, 32), (5, 64)],
@@ -89,7 +89,9 @@ SEARCH = {
         [(5, 16), (7, 512)],
         [(5, 32), (5, 64), (5, 64)]
       ],
-      dropout = [.65, .75, .85, .95]
+      dropout = [.8, .85, .9],
+      decay_step = [100, 80, 60],
+      max_acc = [.75]
     )
   }
 }
@@ -184,6 +186,18 @@ CONFIGS = [
     variant='crop-big-search',
     train_data_name='crop-train-big',
     valid_data_name='crop-valid-big',
+    test_data_name='crop-test-big',
+    preprocessor='color',
+    param_set='crop',
+    search_set='crop',
+    search_size=20
+  ),
+
+  Namespace(
+    model='tf',
+    variant='crop-huge-search',
+    train_data_name='crop-train-huge',
+    valid_data_name='crop-valid-huge',
     test_data_name='crop-test-big',
     preprocessor='color',
     param_set='crop',
