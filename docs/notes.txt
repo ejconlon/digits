@@ -37,3 +37,6 @@ next features:
 learning rate decay
 freeze good configs/params?
 
+promising tuning:
+(7, 16), (5, 512)
+

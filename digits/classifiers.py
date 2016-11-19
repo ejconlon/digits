@@ -92,9 +92,9 @@ def cnn(dataset, dropout, params, width, depth):
 
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
-  # because we do 2-pooling after every round
-  c = width // (1 << num_conv)
-  assert c * (1 << num_conv) == width
+  # because we do 2-pooling after every round (except last)
+  c = width // (1 << (num_conv - 1))
+  assert c * (1 << (num_conv - 1)) == width
   unconn = c * c * params.convs[-1][1]
 
   conv_weights = []
@@ -102,19 +102,24 @@ def cnn(dataset, dropout, params, width, depth):
 
   conv = dataset
   last_depth = depth
+  i = 0
   for (conv_width, conv_depth) in params.convs:
     w = tf.Variable(tf.random_normal([conv_width, conv_width, last_depth, conv_depth]))
     b = tf.Variable(tf.random_normal([conv_depth]))
-    conv = maxpool2d(conv2d(conv, w, b), k=2)
+    conv = conv2d(conv, w, b)
+    if i != len(params.convs) - 1:
+      conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
+    i += 1
 
-  fc = tf.reshape(conv, [-1, unconn])
+  fc = tf.nn.dropout(tf.reshape(conv, [-1, unconn]), dropout)
+
   last_conn = unconn
   for conn in params.fcs:
     w = tf.Variable(tf.random_normal([last_conn, conn]))
     b = tf.Variable(tf.random_normal([conn]))
-    fc = tf.nn.dropout(tf.nn.relu(tf.add(tf.matmul(fc, w), b)), dropout)
+    fc = tf.nn.relu(tf.add(tf.matmul(fc, w), b))
     last_conn = conn
     fc_weights.append(w)
 
