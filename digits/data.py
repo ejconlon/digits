@@ -217,6 +217,14 @@ def concat(data0, data1):
   assert data1.inv_map is None
   return Data(X = np.concatenate((data0.X, data1.X)), y = np.concatenate((data0.y, data1.y)), offset = 0, inv_map = None)
 
+def invert(num_classes, y):
+  assert len(y.shape) == 1
+  inv = [[] for i in range(num_classes)]
+  for i in range(y.shape[0]):
+    v = y[i]
+    inv[v].append(i)
+  return [np.array(inv[i], dtype=np.int32) for i in range(num_classes)]
+
 # TODO consider distribution across all classes
 # also just consider delegating to train_test_split or whatever
 def prepare_cropped(data, drop=None, keep=None, shuffle=False, then_drop=None, then_keep=None, random_state=None):

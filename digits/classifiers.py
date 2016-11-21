@@ -13,6 +13,7 @@ from sklearn.svm import SVC
 import tensorflow as tf
 
 from .common import one_hot, product
+from .data import invert
 from .images import img_select, img_rando, img_width, img_depth
 from .params import PARAMS, SEARCH
 from .metrics import Metrics
@@ -188,10 +189,13 @@ class TFModel(Model):
       depth = img_depth(train_data.X)
       graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
       train_labels = one_hot(params.num_classes, train_data.y)
+      train_inv = invert(params.num_classes, train_data.y)
       if valid_data is not None:
         valid_labels = one_hot(params.num_classes, valid_data.y)
+        valid_inv = invert(params.num_classes, valid_data.y)
       else:
         valid_labels = None
+        valid_inv = None
 
       with tf.Session(graph=graph) as session:
         tf.initialize_all_variables().run()
@@ -217,9 +221,9 @@ class TFModel(Model):
           if step % params.display_step == 0:
             seen = step * params.batch_size
             row = { 'step': step, 'seen': seen }
-            sets = [('train', img_select(train_data.X, train_labels, params.display_size))]
+            sets = [('train', img_select(train_data.X, train_labels, train_inv, params.display_size))]
             if valid_data is not None:
-              sets.append(('valid', img_select(valid_data.X, valid_labels, params.display_size)))
+              sets.append(('valid', img_select(valid_data.X, valid_labels, valid_inv, params.display_size)))
             for (role, (dataset, labels)) in sets:
               feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
               display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
@@ -244,7 +248,7 @@ class TFModel(Model):
                 print('breaking early because of artificial accuracy limit')
                 break
           # Now train for the round
-          dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
+          dataset, labels = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
           feed_dict = {
             'dataset:0': dataset,
             'labels:0': labels,

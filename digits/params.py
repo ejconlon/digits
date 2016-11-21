@@ -27,9 +27,9 @@ PARAMS = {
       # TODO 150k for mnist
       training_iters = 150000,  
       # number of examples per descent
-      batch_size = 128,
+      batch_size = 200,
       # number of examples per display step
-      display_size = 512,
+      display_size = 200,
       # number of batches per display/validation step
       display_step = 10,
       # keep_prob, 1.0 keep all
@@ -55,8 +55,8 @@ PARAMS = {
       decay_step = 100,
       break_display_step = 10,
       training_iters = 500000,
-      batch_size = 128,
-      display_size = 128,
+      batch_size = 200,
+      display_size = 200,
       display_step = 10,
       dropout = 0.90,
       convs = [(7, 32), (5, 64), (5, 128)],
@@ -71,19 +71,23 @@ PARAMS = {
     'crop-small': Namespace(
       num_classes = 10,
       lam =  0,
-      alpha = 0.003,
+      alpha = 0.03,
       decay_factor = 0.66,
-      decay_step = 50,
+      decay_step = 10,
       break_display_step = 10,
       training_iters = 500000,
-      batch_size = 128,
-      display_size = 128,
+      batch_size = 200,
+      display_size = 200,
       display_step = 10,
       dropout = 0.90,
-      convs = [(5, 32), (5, 64)],
+      convs = [(7, 32), (5, 64), (5, 128)],
       fcs = [1024],
       use_rando = False,
-      max_acc = None
+      max_acc = None,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = 0.25
     )
   }
 }

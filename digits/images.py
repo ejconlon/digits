@@ -151,8 +151,13 @@ def img_prepare_all(arr):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, batch_size, augment=None):
+def img_select(X, y, y_inv, batch_size, augment=None):
   assert X.shape[0] == y.shape[0]
+  num_classes = len(y_inv)
+  per_class = batch_size // num_classes
+  assert num_classes * per_class == batch_size
+  seen = [0 for i in range(num_classes)]
+  avail = list(range(num_classes))
   lim = X.shape[0]
   Xb_shape = list(X.shape)
   Xb_shape[0] = batch_size
@@ -161,7 +166,11 @@ def img_select(X, y, batch_size, augment=None):
   yb_shape[0] = batch_size
   yb = np.empty(yb_shape, dtype=y.dtype)
   for i in range(batch_size):
-    index = random.randint(0, lim-1)
+    klass = random.choice(avail)
+    seen[klass] += 1
+    if seen[klass] == per_class:
+      avail.remove(klass)
+    index = np.random.choice(y_inv[klass])
     if augment is None:
       Xb[i] = X[index]
     else:
