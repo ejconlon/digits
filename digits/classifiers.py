@@ -141,6 +141,7 @@ class TFModel(Model):
       labels = tf.placeholder(tf.int32, shape=[None, params.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
       alpha = tf.placeholder(tf.float32, name='alpha')
+      global_step = tf.placeholder(tf.int32, name='global_step')
     
       logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, depth)
 
@@ -243,7 +244,13 @@ class TFModel(Model):
                 break
           # Now train for the round
           dataset, labels = img_select(train_data.X, train_labels, params.batch_size, rando)
-          feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': params.dropout, 'alpha:0': alpha}
+          feed_dict = {
+            'dataset:0': dataset,
+            'labels:0': labels,
+            'keep_prob:0': params.dropout,
+            'alpha:0': alpha,
+            'global_step:0': step
+          }
           session.run([optimizer], feed_dict=feed_dict)
           if params.decay_step is not None:
             if step > 0 and step % params.decay_step == 0:

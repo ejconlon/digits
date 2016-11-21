@@ -118,10 +118,16 @@ def img_gray_contrast_all(arr):
 def img_color_contrast_all(arr):
   k = 7
   c = 0.01
-  # TODO re-enable contrast
-  #fn = lambda img: skimage.color.rgb2hsv(skimage.exposure.equalize_adapthist(img, kernel_size=k, clip_limit=c))
+  # gray avg
+  selem = skimage.morphology.square(k)
+  def fn(img):
+    img = skimage.color.rgb2gray(img)
+    img = skimage.filters.rank.subtract_mean(img, selem)
+    return img
+  # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)
-  fn = lambda img: skimage.color.rgb2gray(img)
+  # only gray
+  #fn = lambda img: skimage.color.rgb2gray(img)
   return img_map(fn, arr)
 
 def img_prepare_all(arr):
