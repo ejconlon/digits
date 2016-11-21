@@ -1,5 +1,7 @@
 from argparse import Namespace
 
+from .images import DEFAULT_SCALE, DEFAULT_TRANSLATION, DEFAULT_ROTATION, DEFAULT_INVERSION
+
 PARAMS = {
   'baseline': {
     'mnist': Namespace(
@@ -39,23 +41,48 @@ PARAMS = {
       # randomize image rotation, etc
       use_rando = True,
       # artifical max acc
-      max_acc = 0.9
+      max_acc = 0.9,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = DEFAULT_INVERSION
     ),
     'crop': Namespace(
       num_classes = 10,
-      lam =  0.001,
-      alpha = 0.003,
+      lam = 1e-10,
+      alpha = 0.0001,
       decay_factor = 0.66,
       decay_step = 100,
       break_display_step = 10,
       training_iters = 500000,
-      batch_size = 512,
-      display_size = 512,
+      batch_size = 128,
+      display_size = 128,
       display_step = 10,
-      dropout = 0.95,
-      convs = [(5, 32), (5, 64)],
+      dropout = 0.90,
+      convs = [(7, 32), (5, 64), (5, 128)],
       fcs = [1024],
       use_rando = True,
+      max_acc = None,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = 0.25
+    ),
+    'crop-small': Namespace(
+      num_classes = 10,
+      lam =  0,
+      alpha = 0.003,
+      decay_factor = 0.66,
+      decay_step = 50,
+      break_display_step = 10,
+      training_iters = 500000,
+      batch_size = 128,
+      display_size = 128,
+      display_step = 10,
+      dropout = 0.90,
+      convs = [(5, 32), (5, 64)],
+      fcs = [1024],
+      use_rando = False,
       max_acc = None
     )
   }
@@ -155,7 +182,7 @@ CONFIGS = [
     valid_data_name='crop-valid-small',
     test_data_name='crop-test-small',
     preprocessor='color',
-    param_set='crop'
+    param_set='crop-small'
   ),
 
   Namespace(

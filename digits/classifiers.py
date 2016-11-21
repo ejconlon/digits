@@ -108,6 +108,7 @@ def cnn(dataset, dropout, params, width, depth):
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = conv2d(conv, w, b)
     if i != len(params.convs) - 1:
+      conv = tf.nn.local_response_normalization(conv)
       conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
@@ -179,7 +180,7 @@ class TFModel(Model):
 
       if params.use_rando:
         # TODO tune rando params
-        rando = img_rando
+        rando = lambda img: img_rando(img, s=params.rando_scale, r=params.rando_rotation, t=params.rando_translation, i=params.rando_inversion)
       else:
         rando = None
       

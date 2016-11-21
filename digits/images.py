@@ -10,10 +10,14 @@ import skimage.transform
 
 from .common import product
 
-DEFAULT_S=1.03
-DEFAULT_R=0.15
-DEFAULT_T=1.5
-DEFAULT_I=0.0
+# Scale limit (1.0 is identity)
+DEFAULT_SCALE=1.02
+# Rotation limit (0 is identity)
+DEFAULT_ROTATION=0.10
+# Translation limit (0 is identity)
+DEFAULT_TRANSLATION=1.1
+# Inversion prob (0 is identity)
+DEFAULT_INVERSION=0.0
 
 def img_width(arr):
   if is_single_img(arr):
@@ -94,7 +98,7 @@ def img_unflatten(arr, width, depth):
     return arr.reshape((-1, width, width, depth))
 
 # apply a random transformation to an image
-def img_rando(img, s=DEFAULT_S, r=DEFAULT_R, t=DEFAULT_T, i=DEFAULT_I):
+def img_rando(img, s=DEFAULT_SCALE, r=DEFAULT_ROTATION, t=DEFAULT_TRANSLATION, i=DEFAULT_INVERSION):
   scale = random.uniform(1/s, s)
   rot = random.uniform(-r, r)
   trans = (random.uniform(-t, t), random.uniform(-t, t))
@@ -123,6 +127,8 @@ def img_color_contrast_all(arr):
   def fn(img):
     img = skimage.color.rgb2gray(img)
     img = skimage.filters.rank.subtract_mean(img, selem)
+    img = skimage.img_as_float(img)
+    img = skimage.exposure.rescale_intensity(img)
     return img
   # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)
@@ -138,7 +144,6 @@ def img_prepare_all(arr):
     # color (svhn)
     assert len(arr.shape) == 4
     arr = img_color_contrast_all(arr)  # not necessary for mnist
-    arr = skimage.img_as_float(arr)
   if len(arr.shape) == 3:
     gray_shape = list(arr.shape)
     gray_shape.append(1)
