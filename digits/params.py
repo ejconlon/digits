@@ -49,24 +49,20 @@ PARAMS = {
     ),
     'crop': Namespace(
       num_classes = 10,
-      lam = 1e-10,
-      alpha = 0.0001,
+      lam = 1e-8,
+      alpha = 0.003,
       decay_factor = 0.66,
       decay_step = 100,
-      break_display_step = 10,
+      break_display_step = 20,
       training_iters = 500000,
-      batch_size = 200,
+      batch_size = 100,
       display_size = 200,
-      display_step = 10,
+      display_step = 50,
       dropout = 0.90,
-      convs = [(7, 32), (5, 64), (5, 128)],
-      fcs = [1024],
-      use_rando = True,
-      max_acc = None,
-      rando_scale = DEFAULT_SCALE,
-      rando_translation = DEFAULT_TRANSLATION,
-      rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.25
+      convs = [(5, 16), (5, 32), (5, 64)],
+      fcs = [1024, 512],
+      use_rando = False,
+      max_acc = None
     ),
     'crop-small': Namespace(
       num_classes = 10,
@@ -166,7 +162,7 @@ CONFIGS = [
     valid_data_name='crop-valid-huge',
     test_data_name='crop-test-big',
     preprocessor='color',
-    param_set='crop-small'  # small batch time!
+    param_set='crop'
   ),
 
   Namespace(

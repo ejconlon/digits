@@ -90,6 +90,8 @@ def maxpool2d(x, k=2):
 def cnn(dataset, dropout, params, width, depth):
   num_conv = len(params.convs)
   num_fc = len(params.fcs)
+  assert num_conv > 0
+  assert num_fc > 0
 
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
@@ -121,7 +123,7 @@ def cnn(dataset, dropout, params, width, depth):
   for conn in params.fcs:
     w = tf.Variable(tf.random_normal([last_conn, conn]))
     b = tf.Variable(tf.random_normal([conn]))
-    fc = tf.nn.relu(tf.add(tf.matmul(fc, w), b))
+    fc = tf.nn.relu(tf.nn.bias_add(tf.matmul(fc, w), b))
     last_conn = conn
     fc_weights.append(w)
 
