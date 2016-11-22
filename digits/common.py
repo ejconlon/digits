@@ -1,6 +1,7 @@
 import functools
 import operator
 import pickle
+import sys
 
 import numpy as np
 
@@ -51,10 +52,17 @@ class FileWrap:
 
 def pickle_to(x, filename):
   with open(filename, 'wb') as f:
-    g = FileWrap(f)
-    pickle.dump(x, g, protocol=pickle.HIGHEST_PROTOCOL)
+    if sys.version_info > (3,):
+      g = FileWrap(f)
+      pickle.dump(x, g, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+      pickle.dump(x, f, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 def unpickle_from(filename):
   with open(filename, 'rb') as f:
-    g = FileWrap(f)
-    return pickle.load(g)
+    if sys.version_info > (3,):
+      g = FileWrap(f)
+      return pickle.load(g)
+    else:
+      return pickle.load(f)

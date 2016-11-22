@@ -70,24 +70,20 @@ PARAMS = {
     ),
     'crop-small': Namespace(
       num_classes = 10,
-      lam =  0,
-      alpha = 0.03,
+      lam = 1e-10,
+      alpha = 0.003,
       decay_factor = 0.66,
-      decay_step = 10,
+      decay_step = 20,
       break_display_step = 10,
       training_iters = 500000,
       batch_size = 200,
       display_size = 200,
       display_step = 10,
       dropout = 0.90,
-      convs = [(7, 32), (5, 64), (5, 128)],
+      convs = [(5, 32), (5, 64)],
       fcs = [1024],
       use_rando = False,
-      max_acc = None,
-      rando_scale = DEFAULT_SCALE,
-      rando_translation = DEFAULT_TRANSLATION,
-      rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.25
+      max_acc = None
     )
   }
 }

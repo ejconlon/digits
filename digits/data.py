@@ -131,13 +131,13 @@ class Loader:
       print('deriving data')
     if name == 'crop-train-small':
       orig = self.read_cropped('train')
-      proc = prepare_cropped(orig, shuffle=True, then_keep=1000, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_keep=2000, random_state=random_state)
     elif name == 'crop-valid-small':
-      orig = self.read_cropped('test')
-      proc = prepare_cropped(orig, shuffle=True, then_keep=200, random_state=random_state)
+      orig = self.read_cropped('train')
+      proc = prepare_cropped(orig, shuffle=True, then_drop=2000, then_keep=400, random_state=random_state)
     elif name == 'crop-test-small':
       orig = self.read_cropped('test')
-      proc = prepare_cropped(orig, shuffle=True, then_drop=200, then_keep=200, random_state=random_state)
+      proc = prepare_cropped(orig, shuffle=True, then_keep=400, random_state=random_state)
     elif name == 'crop-train-big':
       orig = self.read_cropped('train')
       assert orig.X.shape[0] == 73257
