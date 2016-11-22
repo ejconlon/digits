@@ -185,6 +185,11 @@ class Loader:
     pickle_to(proc, proc_file)
     return proc
 
+  def load_img_data(role, size, seed):
+    path = os.path.join(loader.data_path, role, 'digitStruct.m')
+    data = loadmat(path)
+    print(data.shape)
+
 
 class RandomStateContext:
   def __init__(self, seed):

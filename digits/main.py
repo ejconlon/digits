@@ -77,6 +77,7 @@ def make_parser():
   summarize_parser.add_argument('--data', required=True)
   subparsers.add_parser('fetch_mnist')
   subparsers.add_parser('fetch_svhn')
+  subparsers.add_parser('fetch_svhn_img')
   subparsers.add_parser('notebooks')
   return parser
 
@@ -215,13 +216,41 @@ def fetch_svhn(env, loader, args):
     filename = role + '_32x32.mat'
     path = os.path.join(loader.data_path, filename)
     if os.path.isfile(path):
-      print('found', role)
+      print('found svhn', role)
     else:
-      print('fetching', role)
+      print('fetching svhn', role)
       url = 'http://ufldl.stanford.edu/housenumbers/' + filename
       response = urlopen(url)
       with open(path, 'wb') as f:
         f.write(response.read())
+
+class Cwd:
+  def __init__(self, d):
+    self.d = d
+    self.c = None
+
+  def __enter__(self):
+    self.c = os.getcwd()
+    os.chdir(self.d)
+
+  def __exit__(self, x, y, z):
+    os.chdir(self.c)
+    self.c = None
+
+def fetch_svhn_img(env, loader, args):
+  for role in ['test']:
+    filename = role + '.tar.gz'
+    path = os.path.join(loader.data_path, filename)
+    if os.path.isfile(path):
+      print('found svhn img', role)
+    else:
+      print('fetching svhn img', role)
+      url = 'http://ufldl.stanford.edu/housenumbers/' + filename
+      response = urlopen(url)
+      with open(path, 'wb') as f:
+        f.write(response.read())
+      with Cwd(loader.data_path):
+        os.system('tar -xzf ' + filename)
 
 def notebooks(env, loader, args):
   nb_path = env.resolve('notebooks')
@@ -300,6 +329,7 @@ OPS = {
   'summarize': summarize,
   'fetch_mnist': fetch_mnist,
   'fetch_svhn': fetch_svhn,
+  'fetch_svhn_img': fetch_svhn_img,
   'notebooks': notebooks,
   'drive': drive
 }

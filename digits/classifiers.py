@@ -216,54 +216,57 @@ class TFModel(Model):
         break_count = 0
         assert params.break_display_step is None or params.break_display_step > 0
 
-        while step * params.batch_size < params.training_iters:   
-          gc.collect()
-          print('step', step)
-          # First evaluate
-          if step % params.display_step == 0:
-            seen = step * params.batch_size
-            row = { 'step': step, 'seen': seen }
-            sets = [('train', img_select(train_data.X, train_labels, train_inv, params.display_size))]
-            if valid_data is not None:
-              sets.append(('valid', img_select(valid_data.X, valid_labels, valid_inv, params.display_size)))
-            for (role, (dataset, labels, _)) in sets:
-              feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
-              display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
-              display_loss, display_acc = session.run([loss, 'accuracy:0'], feed_dict=feed_dict)
-              print('batch {} seen {} role {} loss {} acc {}'.format(step, seen, role, display_loss, display_acc))
-              row[role + '_loss'] = display_loss
-              row[role + '_acc'] = display_acc
-            #writer.add_summary(display_summaries, step)
-            csv_writer.writerow(row)
-            if valid_data is not None and params.break_display_step is not None:
-              acc = row['valid_acc']
-              if acc > break_acc:
-                print('accuracy improved to', acc)
-                break_acc = acc
-                break_count = 0
-              else:
-                break_count += 1
-              if break_count >= params.break_display_step:
-                print('breaking early because not improving')
-                break
-              if params.max_acc is not None and acc >= params.max_acc:
-                print('breaking early because of artificial accuracy limit')
-                break
-          # Now train for the round
-          dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
-          feed_dict = {
-            'dataset:0': dataset,
-            'labels:0': labels,
-            'keep_prob:0': params.dropout,
-            'alpha:0': alpha,
-            'global_step:0': step
-          }
-          session.run([optimizer], feed_dict=feed_dict)
-          if params.decay_step is not None:
-            if step > 0 and step % params.decay_step == 0:
-              alpha *= params.decay_factor
-              print('decaying alpha to', alpha)
-          step += 1
+        try:
+          while step * params.batch_size < params.training_iters:   
+            gc.collect()
+            print('step', step)
+            # First evaluate
+            if step % params.display_step == 0:
+              seen = step * params.batch_size
+              row = { 'step': step, 'seen': seen }
+              sets = [('train', img_select(train_data.X, train_labels, train_inv, params.display_size))]
+              if valid_data is not None:
+                sets.append(('valid', img_select(valid_data.X, valid_labels, valid_inv, params.display_size)))
+              for (role, (dataset, labels, _)) in sets:
+                feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
+                display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
+                display_loss, display_acc = session.run([loss, 'accuracy:0'], feed_dict=feed_dict)
+                print('batch {} seen {} role {} loss {} acc {}'.format(step, seen, role, display_loss, display_acc))
+                row[role + '_loss'] = display_loss
+                row[role + '_acc'] = display_acc
+              #writer.add_summary(display_summaries, step)
+              csv_writer.writerow(row)
+              if valid_data is not None and params.break_display_step is not None:
+                acc = row['valid_acc']
+                if acc > break_acc:
+                  print('accuracy improved to', acc)
+                  break_acc = acc
+                  break_count = 0
+                else:
+                  break_count += 1
+                if break_count >= params.break_display_step:
+                  print('breaking early because not improving')
+                  break
+                if params.max_acc is not None and acc >= params.max_acc:
+                  print('breaking early because of artificial accuracy limit')
+                  break
+            # Now train for the round
+            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
+            feed_dict = {
+              'dataset:0': dataset,
+              'labels:0': labels,
+              'keep_prob:0': params.dropout,
+              'alpha:0': alpha,
+              'global_step:0': step
+            }
+            session.run([optimizer], feed_dict=feed_dict)
+            if params.decay_step is not None:
+              if step > 0 and step % params.decay_step == 0:
+                alpha *= params.decay_factor
+                print('decaying alpha to', alpha)
+            step += 1
+        except KeyboardInterrupt:
+          print('Caught interrupt. Halting training.')
 
         print('saving')
         saver.save(session, ckpt_path)

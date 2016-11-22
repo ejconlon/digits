@@ -35,6 +35,7 @@ fetch:
 	mkdir -p results
 	@$(MAKE) run ARGS="fetch_mnist"
 	@$(MAKE) run ARGS="fetch_svhn"
+	@$(MAKE) run ARGS="fetch_svhn_img"
 
 results-gen:
 	@$(MAKE) run ARGS="notebooks"

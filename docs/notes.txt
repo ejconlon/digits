@@ -40,3 +40,13 @@ freeze good configs/params?
 promising tuning:
 (7, 16), (5, 512)
 
+-----
+
+Keep promising params around!
+learning rate too high now? .66 decay from .003  seem to level off around .7x acc
+random might be necessary. we seem to be memorizing training set?
+
+Extension:
+load images and do binary classification, digit/not-digit
+- need to train binary classifier?
+- what are we showing here...? 
