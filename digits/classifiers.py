@@ -224,7 +224,7 @@ class TFModel(Model):
             sets = [('train', img_select(train_data.X, train_labels, train_inv, params.display_size))]
             if valid_data is not None:
               sets.append(('valid', img_select(valid_data.X, valid_labels, valid_inv, params.display_size)))
-            for (role, (dataset, labels)) in sets:
+            for (role, (dataset, labels, _)) in sets:
               feed_dict = {'dataset:0': dataset, 'labels:0': labels, 'keep_prob:0': 1.0}
               display_summaries, display_loss, display_acc = session.run([summaries, loss, 'accuracy:0'], feed_dict=feed_dict)
               display_loss, display_acc = session.run([loss, 'accuracy:0'], feed_dict=feed_dict)
@@ -248,7 +248,7 @@ class TFModel(Model):
                 print('breaking early because of artificial accuracy limit')
                 break
           # Now train for the round
-          dataset, labels = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
+          dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
           feed_dict = {
             'dataset:0': dataset,
             'labels:0': labels,

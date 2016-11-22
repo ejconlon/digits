@@ -2,6 +2,7 @@ import random
 import warnings
 
 import numpy as np
+import scipy.ndimage.filters
 import skimage.color
 import skimage.filters.rank
 import skimage.exposure
@@ -119,17 +120,41 @@ def img_gray_contrast_all(arr):
     warnings.simplefilter("ignore")
     return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
 
+# from https://github.com/hangyao/street_view_house_numbers/blob/master/2_CNN_single.ipynb
+def gaussian_filter(k, sigma):
+  x = np.zeros((k, k), dtype=np.float64)
+  mid = k // 2
+  for i in range(k):
+    for j in range(k):
+      x[i, j] = gauss(i - mid, j - mid, sigma)
+  return x / np.sum(x)
+
+def gauss(x, y, sigma):
+  Z = 2 * np.pi * sigma ** 2
+  return  1. / Z * np.exp(-(x ** 2 + y ** 2) / (2. * sigma ** 2))
+
 def img_color_contrast_all(arr):
   k = 7
   c = 0.01
+  sigma = 3.0
+  thresh = 1e-4
   # gray avg
   selem = skimage.morphology.square(k)
+  gfilt = gaussian_filter(k, sigma)
   def fn(img):
     img = skimage.color.rgb2gray(img)
-    img = skimage.filters.rank.subtract_mean(img, selem)
     img = skimage.img_as_float(img)
-    img = skimage.exposure.rescale_intensity(img)
-    return img
+    avg_img = np.empty(img.shape, dtype=np.float64)
+    scipy.ndimage.filters.convolve(img, gfilt, avg_img)
+    centered = img - avg_img
+    sq_img = np.empty(img.shape, dtype=np.float64)
+    scipy.ndimage.filters.convolve(np.square(centered), gfilt, sq_img)
+    sq_img = np.sqrt(sq_img)
+    m = np.mean(sq_img)
+    np.clip(sq_img, max(m, thresh), np.max(sq_img), sq_img)
+    final = np.divide(centered, sq_img)
+    final = skimage.exposure.rescale_intensity(final, (-1.0, 1.0))
+    return final
   # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)
   # only gray
@@ -165,6 +190,7 @@ def img_select(X, y, y_inv, batch_size, augment=None):
   yb_shape = list(y.shape)
   yb_shape[0] = batch_size
   yb = np.empty(yb_shape, dtype=y.dtype)
+  Xi = np.empty(batch_size, dtype=np.int32)
   for i in range(batch_size):
     klass = random.choice(avail)
     seen[klass] += 1
@@ -176,4 +202,5 @@ def img_select(X, y, y_inv, batch_size, augment=None):
     else:
       Xb[i] = augment(X[index])
     yb[i] = y[index]
-  return (Xb, yb)
+    Xi[i] = index
+  return (Xb, yb, Xi)
