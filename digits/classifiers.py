@@ -93,13 +93,19 @@ def cnn(dataset, dropout, params, width, height, depth):
   assert num_conv > 0
   assert num_fc > 0
 
+  pool_last = False
+  if pool_last:
+    factor = num_conv
+  else:
+    factor = num_conv - 1
+
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
   # because we do 2-pooling after every round
-  cw = width // (1 << num_conv)
-  assert cw * (1 << num_conv) == width
-  ch = height // (1 << num_conv)
-  assert ch * (1 << num_conv) == height
+  cw = width // (1 << factor)
+  assert cw * (1 << factor) == width
+  ch = height // (1 << factor)
+  assert ch * (1 << factor) == height
   unconn = cw * ch * params.convs[-1][1]
 
   conv_weights = []
@@ -116,17 +122,17 @@ def cnn(dataset, dropout, params, width, height, depth):
     )
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = conv2d(conv, w, b)
-    conv = tf.nn.local_response_normalization(conv)
-    conv = maxpool2d(conv, k=2)
+    if pool_last or (i < num_conv - 1): # skip pool on last layer
+      conv = tf.nn.local_response_normalization(conv)
+      conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
     i += 1
 
-  hidden = tf.nn.dropout(conv, dropout)
-  shape = hidden.get_shape().as_list()
+  shape = conv.get_shape().as_list()
   last_conn = shape[1] * shape[2] * shape[3]
   assert last_conn == unconn
-  fc = tf.reshape(hidden, [-1, last_conn])
+  fc = tf.reshape(conv, [-1, last_conn])
 
   i = 0
   for conn in params.fcs:
@@ -137,6 +143,7 @@ def cnn(dataset, dropout, params, width, height, depth):
     )
     b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.relu(tf.nn.bias_add(tf.matmul(fc, w), b))
+    fc = tf.nn.dropout(fc, dropout)
     last_conn = conn
     fc_weights.append(w)
     i += 1
@@ -340,7 +347,7 @@ class VoteModel(Model):
     preds = []
     for i in range(num_models):  
       print('Training sub-model', i)
-      model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
+      model = TFModel(self.env, 'tf', self.variant + '__vote__' + str(i))
       pred = model.train(params, train_data, valid_data)
       if valid_data is not None:
         assert pred is not None
@@ -357,7 +364,7 @@ class VoteModel(Model):
     preds = []
     for i in range(num_models): 
       print('Testing sub-model', i) 
-      model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
+      model = TFModel(self.env, 'tf', self.variant + '__vote__' + str(i))
       pred = model.test(params, test_data)
       assert pred is not None
       preds.append(pred)
