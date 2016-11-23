@@ -63,7 +63,7 @@ def img_map(f, arr):
     v0 = f(arr[0])
     s = list(v0.shape)
     s.insert(0, arr.shape[0])
-    v = np.empty(s)
+    v = np.empty(s, dtype=v0.dtype)
     v[0] = v0
     for i in range(1, arr.shape[0]):
       if i > 0 and i % 10000 == 0:
@@ -73,7 +73,8 @@ def img_map(f, arr):
     return v
 
 def img_map_id(f, arr):
-  out = np.empty(arr.shape)
+  v0 = f(arr[0])
+  out = np.empty(arr.shape, dtype=v0.dtype)
   for i in range(arr.shape[0]):
     if i > 0 and i % 10000 == 0:
       print('processing', i)
@@ -113,7 +114,7 @@ def img_rando(img, s=DEFAULT_SCALE, r=DEFAULT_ROTATION, t=DEFAULT_TRANSLATION, i
   tform = skimage.transform.SimilarityTransform(scale=scale, rotation=rot, translation=trans)
   warped = skimage.transform.warp(img, tform, mode='symmetric')
   if random.random() < i:
-    warped = 1.0 - warped
+    warped = -1.0 * warped
   return warped
 
 def img_contrast(img, out, selem, p):
@@ -149,7 +150,7 @@ def img_color_contrast_all(arr):
   thresh = 1e-4
   x0 = 0
   x1 = arr[0].shape[0] - x0
-  y0 = 4
+  y0 = 6
   y1 = arr[0].shape[1] - y0
   # gray avg
   selem = skimage.morphology.square(k)
