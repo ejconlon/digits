@@ -150,7 +150,7 @@ def img_color_contrast_all(arr):
   thresh = 1e-4
   x0 = 0
   x1 = arr[0].shape[0] - x0
-  y0 = 6
+  y0 = 4  # 32 - 4 - 4 = 24 is divisible by 2^3, so 3 pooling ops are supported
   y1 = arr[0].shape[1] - y0
   # gray avg
   selem = skimage.morphology.square(k)

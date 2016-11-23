@@ -15,25 +15,25 @@ PARAMS = {
     'mnist': Namespace(
       num_classes = 10,
       # regularization param 0.0001 for mnist, 0.00000001 for crop?
-      lam =  0.001,
+      lam = 1e-4,
       # learning rate
-      alpha = 0.003,
+      alpha = 0.001,
       # decay alpha by this every n steps
-      decay_factor = 0.66,
+      decay_factor = 0.1,
       # update alpha after this number of steps
-      decay_step = 100,
+      decay_step = 500,
       # number of display steps to break if validation doesn't improve
       break_display_step = 10,
       # TODO 150k for mnist
       training_iters = 150000,  
       # number of examples per descent
-      batch_size = 200,
+      batch_size = 100,
       # number of examples per display step
       display_size = 200,
       # number of batches per display/validation step
-      display_step = 10,
+      display_step = 25,
       # keep_prob, 1.0 keep all
-      dropout = 0.85,
+      dropout = 0.95,
       # (width, depth) of convolutional layers
       convs = [(5, 32), (5, 64)],
       # size of fully connected layers

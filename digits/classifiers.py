@@ -95,11 +95,11 @@ def cnn(dataset, dropout, params, width, height, depth):
 
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
-  # because we do 2-pooling after every round (except last)
-  cw = width // (1 << (num_conv - 1))
-  assert cw * (1 << (num_conv - 1)) == width
-  ch = height // (1 << (num_conv - 1))
-  assert ch * (1 << (num_conv - 1)) == height
+  # because we do 2-pooling after every round
+  cw = width // (1 << num_conv)
+  assert cw * (1 << num_conv) == width
+  ch = height // (1 << num_conv)
+  assert ch * (1 << num_conv) == height
   unconn = cw * ch * params.convs[-1][1]
 
   conv_weights = []
@@ -109,32 +109,47 @@ def cnn(dataset, dropout, params, width, height, depth):
   last_depth = depth
   i = 0
   for (conv_width, conv_depth) in params.convs:
-    w = tf.Variable(tf.random_normal([conv_width, conv_width, last_depth, conv_depth]))
+    w = tf.get_variable(
+      "CONV" + str(i),
+      shape=[conv_width, conv_width, last_depth, conv_depth],
+      initializer=tf.contrib.layers.xavier_initializer()
+    )
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = conv2d(conv, w, b)
-    if i != len(params.convs) - 1:
-      conv = tf.nn.local_response_normalization(conv)
-      conv = maxpool2d(conv, k=2)
+    conv = tf.nn.local_response_normalization(conv)
+    conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
     i += 1
 
-  fc = tf.nn.dropout(tf.reshape(conv, [-1, unconn]), dropout)
+  hidden = tf.nn.dropout(conv, dropout)
+  shape = hidden.get_shape().as_list()
+  last_conn = shape[1] * shape[2] * shape[3]
+  assert last_conn == unconn
+  fc = tf.reshape(hidden, [-1, last_conn])
 
-  last_conn = unconn
+  i = 0
   for conn in params.fcs:
-    w = tf.Variable(tf.random_normal([last_conn, conn]))
+    w = tf.get_variable(
+      "FC" + str(i),
+      shape=[last_conn, conn],
+      initializer=tf.contrib.layers.xavier_initializer()
+    )
     b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.relu(tf.nn.bias_add(tf.matmul(fc, w), b))
     last_conn = conn
     fc_weights.append(w)
+    i += 1
 
-  out_w = tf.Variable(tf.random_normal([last_conn, params.num_classes]))
+  out_w = tf.get_variable(
+      "OUT",
+      shape=[last_conn, params.num_classes],
+      initializer=tf.contrib.layers.xavier_initializer()
+    )
   out_b = tf.Variable(tf.random_normal([params.num_classes]))
-
   out = tf.add(tf.matmul(fc, out_w), out_b)
 
-  return (out, conv_weights, fc_weights)
+  return (out, conv_weights, fc_weights, out_w)
 
 class TFModel(Model):
   def _graph(self, params, width, height, depth):
@@ -151,13 +166,13 @@ class TFModel(Model):
       global_step = tf.placeholder(tf.int32, name='global_step')
       decay_factor = tf.placeholder(tf.float32, name='decay_factor')
     
-      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, height, depth)
+      logits, conv_weights, fc_weights, out_w = cnn(dataset, keep_prob, params, width, height, depth)
 
       # reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
       #       sum(tf.nn.l2_loss(w) for w in fc_weights)
 
       # TODO reg conv_weights?
-      reg = sum(tf.nn.l2_loss(w) for w in fc_weights)
+      reg = sum(tf.nn.l2_loss(w) for w in fc_weights) + tf.nn.l2_loss(out_w)
 
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + params.lam * reg
