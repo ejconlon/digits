@@ -312,10 +312,11 @@ class TFModel(Model):
 
 class VoteModel(Model):
   def train(self, params, train_data, valid_data=None):
-    num_models = 2 # TODO use params.num_classes
+    num_models = params.num_classes
     assert num_models > 0
     preds = []
     for i in range(num_models):  
+      print('Training sub-model', i)
       model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
       pred = model.train(params, train_data, valid_data)
       if valid_data is not None:
@@ -328,10 +329,11 @@ class VoteModel(Model):
       return None
 
   def test(self, params, test_data):
-    num_models = 2 # TODO use params.num_classes
+    num_models = params.num_classes
     assert num_models > 0
     preds = []
-    for i in range(num_models):  
+    for i in range(num_models): 
+      print('Testing sub-model', i) 
       model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
       pred = model.test(params, test_data)
       assert pred is not None
@@ -345,7 +347,6 @@ MODELS = {
   'vote': VoteModel
 }
 
-# TODO take num_classes in both of these
 def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None, search_index=None):
   model = MODELS[name](env, name, variant)
   orig_params = PARAMS[name][param_set]  

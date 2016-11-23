@@ -172,6 +172,8 @@ PARAMS = {
   }
 }
 
+PARAMS['vote'] = PARAMS['tf']
+
 SEARCH = {
   'tf': {
     'mnist': Namespace(
