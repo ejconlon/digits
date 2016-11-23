@@ -147,17 +147,23 @@ class TFModel(Model):
       labels = tf.placeholder(tf.int32, shape=[None, params.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
       alpha = tf.placeholder(tf.float32, name='alpha')
+      decay_step = tf.placeholder(tf.int32, name='decay_step')
       global_step = tf.placeholder(tf.int32, name='global_step')
+      decay_factor = tf.placeholder(tf.float32, name='decay_factor')
     
       logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, height, depth)
 
-      reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
-            sum(tf.nn.l2_loss(w) for w in fc_weights)
+      # reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
+      #       sum(tf.nn.l2_loss(w) for w in fc_weights)
+
+      # TODO reg conv_weights?
+      reg = sum(tf.nn.l2_loss(w) for w in fc_weights)
 
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + params.lam * reg
 
-      optimizer = tf.train.AdamOptimizer(learning_rate=alpha).minimize(loss)
+      learning_rate = tf.train.exponential_decay(alpha, global_step, decay_step, decay_factor, name='learning_rate')
+      optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
       prediction = tf.nn.softmax(logits, name='prediction')
       correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(labels, 1))
@@ -210,10 +216,8 @@ class TFModel(Model):
         num_examples = train_data.X.shape[0]
 
         assert params.alpha is not None
-        assert (params.decay_step is None and params.decay_factor is None) or \
-               (params.decay_step is not None and params.decay_factor is not None)
-        alpha = params.alpha
-        print('initial alpha', alpha)
+        assert params.decay_step is not None
+        assert params.decay_factor is not None
 
         break_acc = 0.0
         break_count = 0
@@ -246,6 +250,7 @@ class TFModel(Model):
                   break_acc = acc
                   break_count = 0
                 else:
+                  print('not better than', break_acc)
                   break_count += 1
                 if break_count >= params.break_display_step:
                   print('breaking early because not improving')
@@ -259,14 +264,14 @@ class TFModel(Model):
               'dataset:0': dataset,
               'labels:0': labels,
               'keep_prob:0': params.dropout,
-              'alpha:0': alpha,
+              'alpha:0': params.alpha,
+              'decay_factor:0': params.decay_factor,
+              'decay_step:0': params.decay_step,
               'global_step:0': step
             }
-            session.run([optimizer], feed_dict=feed_dict)
-            if params.decay_step is not None:
-              if step > 0 and step % params.decay_step == 0:
-                alpha *= params.decay_factor
-                print('decaying alpha to', alpha)
+            _, lr = session.run([optimizer, 'learning_rate:0'], feed_dict=feed_dict)
+            if step % params.display_step == 0:
+              print('learning rate', lr)
             step += 1
         except KeyboardInterrupt:
           print('Caught interrupt. Halting training.')
