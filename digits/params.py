@@ -50,8 +50,8 @@ PARAMS = {
     ),
     'crop': Namespace(
       num_classes = 10,
-      lam = 1e-6,
-      alpha = 0.003,
+      lam = 1e-4,
+      alpha = 0.001,
       decay_factor = 0.1,
       decay_step = 500,
       break_display_step = 20,
