@@ -191,7 +191,7 @@ def img_prepare_all(arr):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes
@@ -199,8 +199,26 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False):
   tot_size = batch_size
   if invert:
     tot_size = batch_size * 2
-  seen = [0 for i in range(num_classes)]
-  avail = list(range(num_classes))
+  if step is None:
+    # do random selection weighted by class
+    seen = [0 for i in range(num_classes)]
+    avail = list(range(num_classes))
+    indices = []
+    for i in range(batch_size):
+      klass = random.choice(avail)
+      seen[klass] += 1
+      if seen[klass] == per_class:
+        avail.remove(klass)
+      index = np.random.choice(y_inv[klass])
+      indices.append(index)
+  else:
+    # do sequential selection
+    max_blocks = min(len(yi) // per_class for yi in y_inv)
+    block = step % max_blocks
+    start = block * per_class
+    end = start + per_class
+    indices = [i for yi in y_inv for i in yi[start:end]]
+    assert len(indices) == batch_size
   lim = X.shape[0]
   Xb_shape = list(X.shape)
   Xb_shape[0] = tot_size
@@ -210,12 +228,7 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False):
   yb = np.empty(yb_shape, dtype=y.dtype)
   Xi = np.empty(tot_size, dtype=np.int32)
   j = 0
-  for i in range(batch_size):
-    klass = random.choice(avail)
-    seen[klass] += 1
-    if seen[klass] == per_class:
-      avail.remove(klass)
-    index = np.random.choice(y_inv[klass])
+  for index in indices:
     if augment is None:
       Xb[j] = X[index]
     else:

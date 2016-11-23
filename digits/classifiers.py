@@ -259,7 +259,7 @@ class TFModel(Model):
                   print('breaking early because of artificial accuracy limit')
                   break
             # Now train for the round
-            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert)
+            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step)
             feed_dict = {
               'dataset:0': dataset,
               'labels:0': labels,
