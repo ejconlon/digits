@@ -155,6 +155,7 @@ def img_color_contrast_all(arr):
   selem = skimage.morphology.square(k)
   gfilt = gaussian_filter(k, sigma)
   def fn(img):
+    img = img[x0:x1, y0:y1]
     img = skimage.color.rgb2gray(img)
     img = skimage.img_as_float(img)
     avg_img = np.empty(img.shape, dtype=np.float64)
@@ -167,7 +168,6 @@ def img_color_contrast_all(arr):
     np.clip(sq_img, max(m, thresh), np.max(sq_img), sq_img)
     final = np.divide(centered, sq_img)
     final = skimage.exposure.rescale_intensity(final, (-1.0, 1.0))
-    final = final[x0:x1, y0:y1]
     return final
   # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)
