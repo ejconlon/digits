@@ -26,7 +26,13 @@ def img_width(arr):
     i = 0
   else:
     i = 1
-  assert arr.shape[i] == arr.shape[i + 1]
+  return arr.shape[i]
+
+def img_height(arr):
+  if is_single_img(arr):
+    i = 1
+  else:
+    i = 2
   return arr.shape[i]
 
 def img_depth(arr):
@@ -134,12 +140,17 @@ def gauss(x, y, sigma):
   Z = 2 * np.pi * sigma ** 2
   return  1. / Z * np.exp(-(x ** 2 + y ** 2) / (2. * sigma ** 2))
 
+# Adapted from pylearn2 lecun_lcn
+# http://deeplearning.net/software/pylearn2/
 def img_color_contrast_all(arr):
   k = 7
   c = 0.01
   sigma = 3.0
   thresh = 1e-4
-  r = 2
+  x0 = 0
+  x1 = arr[0].shape[0] - x0
+  y0 = 4
+  y1 = arr[0].shape[1] - y0
   # gray avg
   selem = skimage.morphology.square(k)
   gfilt = gaussian_filter(k, sigma)
@@ -156,7 +167,7 @@ def img_color_contrast_all(arr):
     np.clip(sq_img, max(m, thresh), np.max(sq_img), sq_img)
     final = np.divide(centered, sq_img)
     final = skimage.exposure.rescale_intensity(final, (-1.0, 1.0))
-    final = skimage.util.crop(final, r)
+    final = final[x0:x1, y0:y1]
     return final
   # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)

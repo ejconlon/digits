@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from .common import one_hot, product
 from .data import invert
-from .images import img_select, img_rando, img_width, img_depth
+from .images import img_select, img_rando, img_width, img_height, img_depth
 from .params import PARAMS, SEARCH
 from .metrics import Metrics
 
@@ -87,7 +87,7 @@ def conv2d(x, W, b, strides=1):
 def maxpool2d(x, k=2):
   return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
-def cnn(dataset, dropout, params, width, depth):
+def cnn(dataset, dropout, params, width, height, depth):
   num_conv = len(params.convs)
   num_fc = len(params.fcs)
   assert num_conv > 0
@@ -96,9 +96,11 @@ def cnn(dataset, dropout, params, width, depth):
   # calculate conv/fv size
   # width must be evenly divisible by 2**num_conv
   # because we do 2-pooling after every round (except last)
-  c = width // (1 << (num_conv - 1))
-  assert c * (1 << (num_conv - 1)) == width
-  unconn = c * c * params.convs[-1][1]
+  cw = width // (1 << (num_conv - 1))
+  assert cw * (1 << (num_conv - 1)) == width
+  ch = height // (1 << (num_conv - 1))
+  assert ch * (1 << (num_conv - 1)) == height
+  unconn = cw * ch * params.convs[-1][1]
 
   conv_weights = []
   fc_weights = []
@@ -135,19 +137,19 @@ def cnn(dataset, dropout, params, width, depth):
   return (out, conv_weights, fc_weights)
 
 class TFModel(Model):
-  def _graph(self, params, width, depth):
+  def _graph(self, params, width, height, depth):
     role_path = self._resolve_role('train')
     parent_scope = self._model_name_plus()
     graph = tf.Graph()
 
     with graph.as_default():
-      dataset = tf.placeholder(tf.float32, shape=[None, width, width, depth], name='dataset')
+      dataset = tf.placeholder(tf.float32, shape=[None, width, height, depth], name='dataset')
       labels = tf.placeholder(tf.int32, shape=[None, params.num_classes], name='labels')
       keep_prob = tf.placeholder(tf.float32, name='keep_prob')
       alpha = tf.placeholder(tf.float32, name='alpha')
       global_step = tf.placeholder(tf.int32, name='global_step')
     
-      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, depth)
+      logits, conv_weights, fc_weights = cnn(dataset, keep_prob, params, width, height, depth)
 
       reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
             sum(tf.nn.l2_loss(w) for w in fc_weights)
@@ -188,8 +190,9 @@ class TFModel(Model):
         rando = None
       
       width = img_width(train_data.X)
+      height = img_height(train_data.X)
       depth = img_depth(train_data.X)
-      graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, depth)
+      graph, loss, saver, writer, summaries, optimizer = self._graph(params, width, height, depth)
       train_labels = one_hot(params.num_classes, train_data.y)
       train_inv = invert(params.num_classes, train_data.y)
       if valid_data is not None:
