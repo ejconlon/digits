@@ -8,6 +8,7 @@ import skimage.filters.rank
 import skimage.exposure
 import skimage.morphology
 import skimage.transform
+import skimage.util
 
 from .common import product
 
@@ -138,6 +139,7 @@ def img_color_contrast_all(arr):
   c = 0.01
   sigma = 3.0
   thresh = 1e-4
+  r = 2
   # gray avg
   selem = skimage.morphology.square(k)
   gfilt = gaussian_filter(k, sigma)
@@ -154,6 +156,7 @@ def img_color_contrast_all(arr):
     np.clip(sq_img, max(m, thresh), np.max(sq_img), sq_img)
     final = np.divide(centered, sq_img)
     final = skimage.exposure.rescale_intensity(final, (-1.0, 1.0))
+    final = skimage.util.crop(final, r)
     return final
   # only hsv
   #fn = lambda img: skimage.color.rgb2hsv(img)
