@@ -76,8 +76,8 @@ PARAMS = {
       decay_step = 50,
       break_display_step = 10,
       training_iters = 1000000,
-      batch_size = 250,
-      display_size = 500,
+      batch_size = 50, # TODO bump
+      display_size = 100,
       display_step = 25,
       dropout = 0.9,
       convs = [(5, 32), (5, 64)],
@@ -278,6 +278,16 @@ CONFIGS = [
     preprocessor='color',
     param_set='mnist',
     check_ser=True
+  ),
+
+  Namespace(
+    model='vote',
+    variant='mnist',
+    train_data_name='mnist-train',
+    valid_data_name='mnist-valid',
+    test_data_name='mnist-test',
+    preprocessor='color',
+    param_set='mnist'
   ),
 
   Namespace(

@@ -310,9 +310,39 @@ class TFModel(Model):
         return np.concatenate(preds)
       return batch_pred(test_data.X, test_labels)
 
+class VoteModel(Model):
+  def train(self, params, train_data, valid_data=None):
+    num_models = 2 # TODO use params.num_classes
+    assert num_models > 0
+    preds = []
+    for i in range(num_models):  
+      model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
+      pred = model.train(params, train_data, valid_data)
+      if valid_data is not None:
+        assert pred is not None
+        preds.append(pred)
+    if valid_data is not None:
+      assert len(preds) == num_models
+      return np.mean(np.array(preds), axis=0)
+    else:
+      return None
+
+  def test(self, params, test_data):
+    num_models = 2 # TODO use params.num_classes
+    assert num_models > 0
+    preds = []
+    for i in range(num_models):  
+      model = TFModel(self.env, 'vote', self.variant + '__' + str(i))
+      pred = model.test(params, test_data)
+      assert pred is not None
+      preds.append(pred)
+    assert len(preds) == num_models
+    return np.mean(np.array(preds), axis=0)
+
 MODELS = {
   'baseline': BaselineModel,
-  'tf': TFModel
+  'tf': TFModel,
+  'vote': VoteModel
 }
 
 # TODO take num_classes in both of these
