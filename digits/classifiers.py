@@ -225,7 +225,7 @@ class TFModel(Model):
 
         try:
           while step * params.batch_size < params.training_iters:   
-            gc.collect()
+            #gc.collect()
             print('step', step)
             # First evaluate
             if step % params.display_step == 0:
@@ -250,8 +250,8 @@ class TFModel(Model):
                   break_acc = acc
                   break_count = 0
                 else:
-                  print('not better than', break_acc)
                   break_count += 1
+                  print('not better than', break_acc, '| steps left', params.break_display_step - break_count)
                 if break_count >= params.break_display_step:
                   print('breaking early because not improving')
                   break
@@ -259,7 +259,7 @@ class TFModel(Model):
                   print('breaking early because of artificial accuracy limit')
                   break
             # Now train for the round
-            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando)
+            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert)
             feed_dict = {
               'dataset:0': dataset,
               'labels:0': labels,

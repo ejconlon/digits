@@ -45,15 +45,38 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = DEFAULT_INVERSION
+      rando_inversion = DEFAULT_INVERSION,
+      invert=False
     ),
     'crop': Namespace(
       num_classes = 10,
       lam = 1e-6,
       alpha = 0.003,
-      decay_factor = 0.8,
-      decay_step = 100,
-      break_display_step = 50,
+      decay_factor = 0.1,
+      decay_step = 500,
+      break_display_step = 20,
+      training_iters = 1000000,
+      batch_size = 100,
+      display_size = 200,
+      display_step = 25,
+      dropout = 0.95,
+      convs = [(5, 32), (5, 64)],
+      fcs = [1024],
+      use_rando = False,
+      max_acc = None,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = DEFAULT_INVERSION,
+      invert=True
+    ),
+    'crop-70-again': Namespace(
+      num_classes = 10,
+      lam = 1e-6,
+      alpha = 0.003,
+      decay_factor = 0.1,
+      decay_step = 350,
+      break_display_step = 20,
       training_iters = 1000000,
       batch_size = 250,
       display_size = 500,
@@ -66,7 +89,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.5
+      rando_inversion = 0.5,
+      invert=False
     ),
     'crop-decay-67': Namespace(
       num_classes = 10,
@@ -87,7 +111,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.5
+      rando_inversion = 0.5,
+      invert=False
     ),
     'crop-63': Namespace(
       num_classes = 10,
@@ -108,7 +133,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.5
+      rando_inversion = 0.5,
+      invert=False
     ),
     'crop-ok': Namespace(
       num_classes = 10,
@@ -129,7 +155,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.5
+      rando_inversion = 0.5,
+      invert=False
     ),
     'crop-inv': Namespace(
       num_classes = 10,
@@ -150,7 +177,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = 0.5
+      rando_inversion = 0.5,
+      invert=False
     ),
     'crop-70+again': Namespace(
       num_classes = 10,
@@ -171,7 +199,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = DEFAULT_INVERSION
+      rando_inversion = DEFAULT_INVERSION,
+      invert=False
     ),
     'crop-70': Namespace(
       num_classes = 10,
@@ -192,7 +221,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = DEFAULT_INVERSION
+      rando_inversion = DEFAULT_INVERSION,
+      invert=False
     ),
     'crop-68': Namespace(
       num_classes = 10,
@@ -209,7 +239,8 @@ PARAMS = {
       convs = [(5, 32), (5, 64)],
       fcs = [1024],
       use_rando = False,
-      max_acc = None
+      max_acc = None,
+      invert=False
     ),
     'crop-small': Namespace(
       num_classes = 10,
@@ -230,7 +261,8 @@ PARAMS = {
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
-      rando_inversion = DEFAULT_INVERSION
+      rando_inversion = DEFAULT_INVERSION,
+      invert=False
     )
   }
 }
@@ -331,7 +363,7 @@ CONFIGS = [
     valid_data_name='crop-valid-small',
     test_data_name='crop-test-small',
     preprocessor='color',
-    param_set='crop-small'
+    param_set='crop'
   ),
 
   Namespace(
