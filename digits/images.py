@@ -153,7 +153,7 @@ def lcn(img, thresh, gfilt):
   # m = np.mean(root)
   # TODO(eric) use mean as min bound in addition to thresh?
   # was max(m, thresh) below
-  np.clip(root, thresh, np.max(sq_img), sq_img)
+  np.clip(root, thresh, np.max(root), root)
   img = np.divide(centered, root)
   return img
 
