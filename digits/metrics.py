@@ -65,7 +65,10 @@ class Metrics:
     return np.histogram(self.pred, bins=range(self.num_classes), density=True)[0]
 
   def entropy(self):
-    return np.apply_along_axis(scipy.stats.entropy, 0, self.pred_hot)
+    e = np.apply_along_axis(scipy.stats.entropy, 1, self.pred_hot)
+    assert len(e.shape) == 1
+    assert e.shape[0] == self.pred_hot.shape[0]
+    return e
 
   def correct_indices(self):
     return np.where(self.pred == self.gold)[0]
@@ -74,14 +77,14 @@ class Metrics:
     return np.where(self.pred != self.gold)[0]
 
   def most_uncertain_indices(self, e=None):
-    if e is None:
-      e = self.entropy()
-    return np.argsort(-e)
+    return list(reversed(self.most_certain_indices(e)))
 
   def most_certain_indices(self, e=None):
     if e is None:
       e = self.entropy()
-    return np.argsort(e)
+    c = np.argsort(e)
+    assert c.shape == e.shape
+    return c
 
   def report(self):
     precision, recall, f1, support = self.prfs()
@@ -103,6 +106,7 @@ class Metrics:
   def viz(self, proc, k):
     correct = self.correct_indices()
     correct_set = set(correct)
+    print(correct)
     entropy = self.entropy()
     certain = self.most_certain_indices(entropy)
     uncertain = self.most_uncertain_indices(entropy)

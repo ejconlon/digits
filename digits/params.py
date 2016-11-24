@@ -17,7 +17,7 @@ PARAMS = {
       # regularization param 0.0001 for mnist, 0.00000001 for crop?
       lam = 1e-4,
       # learning rate
-      alpha = 0.003,
+      alpha = 0.001,
       # decay alpha by this every n steps
       decay_factor = 0.1,
       # update alpha after this number of steps
@@ -33,7 +33,7 @@ PARAMS = {
       # number of batches per display/validation step
       display_step = 25,
       # keep_prob, 1.0 keep all
-      dropout = 0.90,
+      dropout = 0.95,
       # (width, depth) of convolutional layers
       convs = [(7, 32), (5, 64)],
       # size of fully connected layers
@@ -41,7 +41,7 @@ PARAMS = {
       # randomize image rotation, etc
       use_rando = True,
       # artifical max acc
-      max_acc = None,
+      max_acc = 0.8,
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,

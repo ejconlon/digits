@@ -178,6 +178,8 @@ class TFModel(Model):
       decay_factor = tf.placeholder(tf.float32, name='decay_factor')
     
       logits, conv_weights, fc_weights, out_w = cnn(dataset, keep_prob, params, width, height, depth)
+      for cw in conv_weights:
+         tf.add_to_collection('conv_weights', cw)
 
       # reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
       #       sum(tf.nn.l2_loss(w) for w in fc_weights)
@@ -344,6 +346,14 @@ class TFModel(Model):
           offset += params.display_size
         return np.concatenate(preds)
       return batch_pred(test_data.X, test_labels)
+
+  def get_weights(self, params):
+    ckpt_path = self._resolve_model_file('model.ckpt')
+    graph = tf.Graph()
+    with tf.Session(graph=graph) as session:
+      new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
+      new_saver.restore(session, ckpt_path)
+      return sess.run([tf.get_collection('conv_weights')])
 
 class VoteModel(Model):
   def train(self, params, train_data, valid_data=None):

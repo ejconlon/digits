@@ -63,6 +63,10 @@ def make_parser():
   drive_parser.add_argument('--model', required=True)
   drive_parser.add_argument('--variant')
   drive_parser.add_argument('--random-state', type=int)
+  drive_train_parser = drive_parser.add_mutually_exclusive_group(required=False)
+  drive_train_parser.add_argument('--train', dest='train', action='store_true')
+  drive_train_parser.add_argument('--no-train', dest='train', action='store_false')
+  drive_parser.set_defaults(train=True)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
@@ -276,7 +280,8 @@ def notebooks(env, loader, args):
 
 def run_model(
   env, loader, model, variant, train_data_name, valid_data_name, test_data_name,
-  preprocessor, param_set, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
+  preprocessor, param_set,  do_train, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
+
   train_args = argparse.Namespace(
     random_state=random_state,
     op='train',
@@ -291,34 +296,34 @@ def run_model(
     search_size=search_size,
     search_default=search_default
   )
-  sub_main(env, loader, train_args)
 
-  if check_ser and test_data_name is not None:
-    test_metrics1 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
+  test_args = argparse.Namespace(
+    random_state=random_state,
+    op='test',
+    model=model,
+    variant=variant,
+    test_data=test_data_name,
+    preprocessor=preprocessor,
+    param_set=param_set
+  )
 
-    test_args = argparse.Namespace(
-      random_state=random_state,
-      op='test',
-      model=model,
-      variant=variant,
-      test_data=test_data_name,
-      preprocessor=preprocessor,
-      param_set=param_set
-    )
+  if do_train:
+    sub_main(env, loader, train_args)
+    if check_ser and test_data_name is not None:
+      test_metrics1 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
+      sub_main(env, loader, test_args)
+      test_metrics2 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
+      # Sanity check, they should have run on the same dataset
+      np.testing.assert_array_equal(test_metrics1.gold, test_metrics2.gold)
+      # Now check that we've correctly predicted with the serialized model
+      np.testing.assert_array_equal(test_metrics1.pred, test_metrics2.pred)
+  else:
     sub_main(env, loader, test_args)
-
-    test_metrics2 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
-
-    # Sanity check, they should have run on the same dataset
-    np.testing.assert_array_equal(test_metrics1.gold, test_metrics2.gold)
-
-    # Now check that we've correctly predicted with the serialized model
-    np.testing.assert_array_equal(test_metrics1.pred, test_metrics2.pred)
 
 def drive(env, loader, args):
   config = next(c for c in CONFIGS if c.model == args.model and c.variant == args.variant)
-  run_model(env, loader, random_state=args.random_state, **config.__dict__)
-        
+  run_model(env, loader, do_train=args.train, random_state=args.random_state, **config.__dict__)
+  
 OPS = {
   'inspect': inspect,
   'train': run_train,
