@@ -224,6 +224,7 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
     # do sequential selection
     max_blocks = min(len(yi) // per_class for yi in y_inv)
     block = step % max_blocks
+    # print('block', block, 'of', max_blocks)
     start = block * per_class
     end = start + per_class
     indices = [i for yi in y_inv for i in yi[start:end]]
