@@ -1,6 +1,7 @@
 from base64 import b64encode
 from collections import namedtuple
 from io import BytesIO, StringIO
+import json
 import os
 import warnings
 
@@ -18,13 +19,19 @@ from .images import img_effect
 Explorer = namedtuple('Explorer', [
   'report',
   'metrics',
-  'viz'
+  'viz',
+  'learning_curve',
+  'params',
+  'conv_weights'
 ])
 
-def explore(env, model, variant, role):
+def explore(env, model, variant, role, assert_complete=False):
   report_file = env.resolve_role_file(model, variant, role, 'report.json')
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle')
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle')
+  lc_file = env.resolve_model_file(model, variant, 'learning_curve.csv')
+  params_file = env.resolve_model_file(model, variant, 'params.json')
+  cw_file = env.resolve_model_file(model, variant, 'conv_weights.pickle')
   if os.path.isfile(report_file):
     report = read_report(report_file)
   else:
@@ -37,7 +44,28 @@ def explore(env, model, variant, role):
     viz = unpickle_from(viz_file)
   else:
     viz = None
-  return Explorer(report=report, metrics=metrics, viz=viz)
+  if os.path.isfile(lc_file):
+    learning_curve = pd.read_csv(lc_file)
+  else:
+    learning_curve = None
+  if os.path.isfile(params_file):
+    with open(params_file, 'r') as f:
+      params = json.load(f)
+  else:
+    params = None
+  if os.path.isfile(cw_file):
+    conv_weights = unpickle_from(cw_file)
+  else:
+    conv_weights = None
+  if assert_complete:
+    assert report is not None
+    assert metrics is not None
+    assert viz is not None
+    assert learning_curve is not None
+    assert params is not None
+    if model == 'tf':
+      assert conv_weights is not None
+  return Explorer(report, metrics, viz, learning_curve, params, conv_weights)
 
 # show image or array of them in ipython
 def img_show(arr):

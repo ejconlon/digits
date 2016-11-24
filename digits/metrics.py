@@ -106,7 +106,6 @@ class Metrics:
   def viz(self, proc, k):
     correct = self.correct_indices()
     correct_set = set(correct)
-    print(correct)
     entropy = self.entropy()
     certain = self.most_certain_indices(entropy)
     uncertain = self.most_uncertain_indices(entropy)

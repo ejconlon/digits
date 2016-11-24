@@ -308,6 +308,12 @@ class TFModel(Model):
         print('saving')
         saver.save(session, ckpt_path)
 
+        print('writing weights')
+        conv_weights = session.run([tf.get_collection('conv_weights')])
+        cw_file = self._resolve_model_file('conv_weights.pickle', clean=True)
+        with open(cw_file, 'wb') as f:
+          pickle.dump(conv_weights, f, protocol=pickle.HIGHEST_PROTOCOL)
+
         def batch_pred(dataset, labels):
           preds = []
           offset = 0
@@ -347,13 +353,6 @@ class TFModel(Model):
         return np.concatenate(preds)
       return batch_pred(test_data.X, test_labels)
 
-  def get_weights(self, params):
-    ckpt_path = self._resolve_model_file('model.ckpt')
-    graph = tf.Graph()
-    with tf.Session(graph=graph) as session:
-      new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
-      new_saver.restore(session, ckpt_path)
-      return sess.run([tf.get_collection('conv_weights')])
 
 class VoteModel(Model):
   def train(self, params, train_data, valid_data=None):
