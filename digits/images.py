@@ -200,7 +200,7 @@ def img_prepare_all(arr, use_gcn=True, use_lcn=True):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, step_offset=None):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes
@@ -221,12 +221,9 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, s
       index = np.random.choice(y_inv[klass])
       indices.append(index)
   else:
-    net_step = step
-    if step_offset is not None:
-      net_step += step_offset
     # do sequential selection
     max_blocks = min(len(yi) // per_class for yi in y_inv)
-    block = net_step % max_blocks
+    block = step % max_blocks
     start = block * per_class
     end = start + per_class
     indices = [i for yi in y_inv for i in yi[start:end]]

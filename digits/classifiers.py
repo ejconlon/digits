@@ -239,7 +239,7 @@ class TFModel(Model):
         writer.add_graph(graph)
 
         step = 0
-        step_offset = random.randint(0, 10000)
+        step_offset = random.randint(0, 100000)
         num_examples = train_data.X.shape[0]
 
         assert params.alpha is not None
@@ -286,7 +286,7 @@ class TFModel(Model):
                   print('breaking early because of artificial accuracy limit')
                   break
             # Now train for the round
-            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step, step_offset)
+            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step + step_offset)
             feed_dict = {
               'dataset:0': dataset,
               'labels:0': labels,

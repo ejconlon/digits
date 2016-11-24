@@ -17,6 +17,42 @@ PARAMS = {
       # regularization param 0.0001 for mnist, 0.00000001 for crop?
       lam = 1e-4,
       # learning rate
+      alpha = 0.003,
+      # decay alpha by this every n steps
+      decay_factor = 0.1,
+      # update alpha after this number of steps
+      decay_step = 500,
+      # number of display steps to break if validation doesn't improve
+      break_display_step = 20,
+      # TODO 150k for mnist
+      training_iters = 200000,
+      # number of examples per descent
+      batch_size = 200,
+      # number of examples per display step
+      display_size = 500,
+      # number of batches per display/validation step
+      display_step = 25,
+      # keep_prob, 1.0 keep all
+      dropout = 0.90,
+      # (width, depth) of convolutional layers
+      convs = [(7, 32), (5, 64)],
+      # size of fully connected layers
+      fcs = [1024],
+      # randomize image rotation, etc
+      use_rando = True,
+      # artifical max acc
+      max_acc = None,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = DEFAULT_INVERSION,
+      invert=False
+    ),
+    'mnist-ok': Namespace(
+      num_classes = 10,
+      # regularization param 0.0001 for mnist, 0.00000001 for crop?
+      lam = 1e-4,
+      # learning rate
       alpha = 0.001,
       # decay alpha by this every n steps
       decay_factor = 0.1,
