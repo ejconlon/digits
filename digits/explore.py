@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 import skimage
+import skimage.exposure
 
 from .metrics import read_report, unpickle_from
 from .images import img_effect
@@ -46,6 +47,7 @@ def img_tag(arr):
   if arr.dtype != np.uint8:
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
+      arr = skimage.exposure.rescale_intensity(arr, (0, 1.0))
       arr = skimage.img_as_ubyte(arr)
   if len(arr.shape) == 2:
     mode = 'L'

@@ -93,6 +93,7 @@ def cnn(dataset, dropout, params, width, height, depth):
   assert num_conv > 0
   assert num_fc > 0
 
+  # TODO pool on the last conv layer?
   pool_last = False
   if pool_last:
     factor = num_conv
@@ -123,7 +124,8 @@ def cnn(dataset, dropout, params, width, height, depth):
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = conv2d(conv, w, b)
     if pool_last or (i < num_conv - 1): # skip pool on last layer
-      conv = tf.nn.local_response_normalization(conv)
+      # TODO use lrn?
+      #conv = tf.nn.local_response_normalization(conv)
       conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
@@ -133,6 +135,8 @@ def cnn(dataset, dropout, params, width, height, depth):
   last_conn = shape[1] * shape[2] * shape[3]
   assert last_conn == unconn
   fc = tf.reshape(conv, [-1, last_conn])
+  # TODO use dropout between layers?
+  fc = tf.nn.dropout(fc, dropout)
 
   i = 0
   for conn in params.fcs:
@@ -235,6 +239,7 @@ class TFModel(Model):
         writer.add_graph(graph)
 
         step = 0
+        step_offset = random.randint(0, 10000)
         num_examples = train_data.X.shape[0]
 
         assert params.alpha is not None
@@ -281,7 +286,7 @@ class TFModel(Model):
                   print('breaking early because of artificial accuracy limit')
                   break
             # Now train for the round
-            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step)
+            dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step, step_offset)
             feed_dict = {
               'dataset:0': dataset,
               'labels:0': labels,

@@ -128,7 +128,9 @@ def img_gray_contrast_all(arr):
     warnings.simplefilter("ignore")
     return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
 
-# from https://github.com/hangyao/street_view_house_numbers/blob/master/2_CNN_single.ipynb
+# These 3 (gauss + gaussian_filter + lcn) are adapted from pylearn2 lecun_lcn
+# http://deeplearning.net/software/pylearn2/
+# See also http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf
 def gaussian_filter(k, sigma):
   x = np.zeros((k, k), dtype=np.float64)
   mid = k // 2
@@ -141,11 +143,29 @@ def gauss(x, y, sigma):
   Z = 2 * np.pi * sigma ** 2
   return  1. / Z * np.exp(-(x ** 2 + y ** 2) / (2. * sigma ** 2))
 
+def lcn(img, thresh, gfilt):
+  avg_img = np.empty(img.shape, dtype=np.float64)
+  scipy.ndimage.filters.convolve(img, gfilt, avg_img)
+  centered = img - avg_img
+  sq_img = np.empty(img.shape, dtype=np.float64)
+  scipy.ndimage.filters.convolve(np.square(centered), gfilt, sq_img)
+  root = np.sqrt(sq_img)
+  # m = np.mean(root)
+  # TODO(eric) use mean as min bound in addition to thresh?
+  # was max(m, thresh) below
+  np.clip(root, thresh, np.max(sq_img), sq_img)
+  img = np.divide(centered, root)
+  return img
+
+def gcn(img, thresh):
+  mean = np.mean(img, dtype=np.float64)
+  std = max(np.std(img, dtype=np.float64, ddof=1), thresh)
+  return (img - mean) / std
+
 # Adapted from pylearn2 lecun_lcn
 # http://deeplearning.net/software/pylearn2/
-def img_color_contrast_all(arr):
+def img_color_contrast_all(arr, use_gcn, use_lcn):
   k = 7
-  c = 0.01
   sigma = 3.0
   thresh = 1e-4
   x0 = 0
@@ -153,37 +173,26 @@ def img_color_contrast_all(arr):
   y0 = 4  # 32 - 4 - 4 = 24 is divisible by 2^3, so 3 pooling ops are supported
   y1 = arr[0].shape[1] - y0
   # gray avg
-  selem = skimage.morphology.square(k)
   gfilt = gaussian_filter(k, sigma)
   def fn(img):
     img = img[x0:x1, y0:y1]
     img = skimage.color.rgb2gray(img)
     img = skimage.img_as_float(img)
-    avg_img = np.empty(img.shape, dtype=np.float64)
-    scipy.ndimage.filters.convolve(img, gfilt, avg_img)
-    centered = img - avg_img
-    sq_img = np.empty(img.shape, dtype=np.float64)
-    scipy.ndimage.filters.convolve(np.square(centered), gfilt, sq_img)
-    sq_img = np.sqrt(sq_img)
-    m = np.mean(sq_img)
-    np.clip(sq_img, max(m, thresh), np.max(sq_img), sq_img)
-    final = np.divide(centered, sq_img)
-    final = skimage.exposure.rescale_intensity(final, (-1.0, 1.0))
-    return final
-  # only hsv
-  #fn = lambda img: skimage.color.rgb2hsv(img)
-  # only gray
-  #fn = lambda img: skimage.color.rgb2gray(img)
+    if use_gcn:
+      img = gcn(img, thresh)
+    if use_lcn:
+      img = lcn(img, thresh, gfilt)
+    return img
   return img_map(fn, arr)
 
-def img_prepare_all(arr):
+def img_prepare_all(arr, use_gcn=True, use_lcn=True):
   if len(arr.shape) == 3:
     # gray (mnist)
     arr = skimage.img_as_float(arr)
   else:
     # color (svhn)
     assert len(arr.shape) == 4
-    arr = img_color_contrast_all(arr)  # not necessary for mnist
+    arr = img_color_contrast_all(arr, use_gcn, use_lcn)
   if len(arr.shape) == 3:
     gray_shape = list(arr.shape)
     gray_shape.append(1)
@@ -191,7 +200,7 @@ def img_prepare_all(arr):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, step_offset=None):
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes
@@ -212,9 +221,12 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
       index = np.random.choice(y_inv[klass])
       indices.append(index)
   else:
+    net_step = step
+    if step_offset is not None:
+      net_step += step_offset
     # do sequential selection
     max_blocks = min(len(yi) // per_class for yi in y_inv)
-    block = step % max_blocks
+    block = net_step % max_blocks
     start = block * per_class
     end = start + per_class
     indices = [i for yi in y_inv for i in yi[start:end]]
