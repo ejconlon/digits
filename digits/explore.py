@@ -5,6 +5,7 @@ import os
 import warnings
 
 from IPython.core.display import HTML, display
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -42,8 +43,8 @@ def explore(env, model, variant, role):
 def img_show(arr):
   img_effect(lambda x: display(HTML(img_tag(x))), arr)  
 
-# Given a single image, return a tag
-def img_tag(arr):
+
+def img_obj(arr):
   if arr.dtype != np.uint8:
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
@@ -61,7 +62,11 @@ def img_tag(arr):
       raise Exception('Invalid depth', arr.shape[2])
   else:
     raise Exception('Invalid shape', arr.shape)
-  img = Image.fromarray(arr, mode)
+  return Image.fromarray(arr, mode)
+
+# Given a single image, return a tag
+def img_tag(arr):
+  img = img_obj(arr)
   out = BytesIO()
   img.save(out, format='png')
   return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
@@ -77,3 +82,30 @@ def viz_table(tab):
   tab.to_html(buf, formatters=formatters, escape=False)
   pd.set_option('display.max_colwidth', old_width)
   return buf.getvalue()
+
+def plot_images(frame, rows, cols, titler, imager, show=False, dest=None):
+  plt.clf()
+  
+  assert len(frame) >= rows * cols
+
+  fig, axes = plt.subplots(rows, cols, subplot_kw={'xticks': [], 'yticks': []})
+
+  fig.subplots_adjust(hspace=0.3, wspace=0.05)
+
+  i = 0
+  for ax in axes.flat:
+    row = frame.iloc[i]
+    ax.set_title(titler(row))
+    img = imager(row)
+    if len(img.shape) == 3 and img.shape[2] == 1:
+      img = img.reshape((img.shape[0], img.shape[1]))
+      ax.imshow(img, cmap='gray')
+    else:
+      ax.imshow(img)
+    i += 1
+
+  if show:
+    plt.show()
+
+  if dest is not None:
+    plt.savefig(dest)
