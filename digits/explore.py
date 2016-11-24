@@ -99,9 +99,9 @@ def plot_images(frame, rows, cols, titler, imager, show=False, dest=None):
     img = imager(row)
     if len(img.shape) == 3 and img.shape[2] == 1:
       img = img.reshape((img.shape[0], img.shape[1]))
-      ax.imshow(img, cmap='gray')
+      ax.imshow(img, cmap='gray', interpolation='none')
     else:
-      ax.imshow(img)
+      ax.imshow(img, interpolation='none')
     i += 1
 
   if show:
