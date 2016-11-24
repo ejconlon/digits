@@ -71,6 +71,14 @@ def explore(env, model, variant, role, assert_complete=False):
 def img_show(arr):
   img_effect(lambda x: display(HTML(img_tag(x))), arr)  
 
+# make gray images look gray to matplotlib by removing the dummy depth dim
+def img_fudge(img):
+  if len(img.shape) == 2:
+    return (img, True)
+  elif len(img.shape) == 3 and img.shape[2] == 1:
+    return (img.reshape((img.shape[0], img.shape[1])), True)
+  else:
+    return (img, False)
 
 def img_obj(arr):
   if arr.dtype != np.uint8:
@@ -123,10 +131,12 @@ def plot_images(frame, rows, cols, titler, imager, show=False, dest=None):
   i = 0
   for ax in axes.flat:
     row = frame.iloc[i]
-    ax.set_title(titler(row))
-    img = imager(row)
-    if len(img.shape) == 3 and img.shape[2] == 1:
-      img = img.reshape((img.shape[0], img.shape[1]))
+    title = titler(row)
+    img, is_gray = img_fudge(imager(row))
+    if title is not None:
+      ax.set_title(title)
+    # TODO just figure out a decent non-gray cmap
+    if is_gray:
       ax.imshow(img, cmap='gray', interpolation='none')
     else:
       ax.imshow(img, interpolation='none')
