@@ -2,6 +2,7 @@ from base64 import b64encode
 from collections import namedtuple
 from io import BytesIO, StringIO
 import json
+import math
 import os
 import warnings
 
@@ -112,38 +113,47 @@ def viz_table(tab):
   old_width = pd.get_option('display.max_colwidth')
   pd.set_option('display.max_colwidth', -1)
   formatters = {
-    'proc_image': lambda arr: img_tag(arr)
+    'proc_image': lambda arr: img_tag(arr),
+    'weights': lambda arr: img_tag(arr)
   }
   buf = StringIO()
   tab.to_html(buf, formatters=formatters, escape=False)
   pd.set_option('display.max_colwidth', old_width)
   return buf.getvalue()
 
-def plot_images(frame, rows, cols, titler, imager, show=False, dest=None):
+def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=None):
   plt.clf()
-  
-  assert len(frame) >= rows * cols
 
+  if rows is None:
+    assert cols is None
+    rows = int(math.ceil(math.sqrt(len(frame))))
+    cols = rows
+  else:
+    assert cols is not None
+  
   fig, axes = plt.subplots(rows, cols, subplot_kw={'xticks': [], 'yticks': []})
 
-  fig.subplots_adjust(hspace=0.3, wspace=0.05)
+  fig.subplots_adjust(hspace=0.5, wspace=0.2)
 
   i = 0
   for ax in axes.flat:
-    row = frame.iloc[i]
-    title = titler(row)
-    img, is_gray = img_fudge(imager(row))
-    if title is not None:
-      ax.set_title(title)
-    # TODO just figure out a decent non-gray cmap
-    if is_gray:
-      ax.imshow(img, cmap='gray', interpolation='none')
+    if i < len(frame):
+      row = frame.iloc[i]
+      title = titler(row)
+      img, is_gray = img_fudge(imager(row))
+      if title is not None:
+        ax.set_title(title)
+      if is_gray:
+        cmap = 'gray'
+      else:
+        cmap = 'seismic'
+      ax.imshow(img, cmap=cmap, interpolation='nearest')
     else:
-      ax.imshow(img, interpolation='none')
+      ax.set_visible(False)
     i += 1
 
   if show:
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest)
+    plt.savefig(dest, bbox_inches='tight')
