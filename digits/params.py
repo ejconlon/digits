@@ -27,9 +27,9 @@ PARAMS = {
       # TODO 150k for mnist
       training_iters = 200000,
       # number of examples per descent
-      batch_size = 100,
+      batch_size = 200,
       # number of examples per display step
-      display_size = 200,
+      display_size = 500,
       # number of batches per display/validation step
       display_step = 25,
       # keep_prob, 1.0 keep all

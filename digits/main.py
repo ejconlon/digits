@@ -32,6 +32,7 @@ from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
 from .params import PARAMS, SEARCH, CONFIGS, find_search_size, has_search_size
+from .explore import explore, plot_learning, plot_weights, plot_images
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -109,6 +110,17 @@ def write_results(env, model, variant, role, proc, metrics, activations):
   print(env.model_name_plus(model, variant), '/', role)
   print('accuracy', metrics.accuracy())
   metrics.print_classification_report()
+  # Now plot stuff!
+  e = explore(env, model, variant, role, assert_complete=False)
+  if role == 'valid':
+    curve_file = env.resolve_model_file(model, variant, 'learning_curve.png', clean=True)
+    plot_learning(e.learning_curve, dest=curve_file)
+    weights_file = env.resolve_model_file(model, variant, 'weights_0.png', clean=True)
+    plot_weights(e.conv_weights, 0, dest=weights_file)
+  viz_dict = e.viz._asdict()
+  for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
+    out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
+    plot_images(viz_dict[target], lambda r: '%d (%.2f)' % (r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
