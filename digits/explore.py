@@ -41,6 +41,7 @@ def parse_weights(conv_weights):
 def plot_weights(weight_frame, layer, show=False, dest=None):
   assert show or dest is not None
   plt.clf()
+
   frame_layer = weight_frame[weight_frame.layer == layer]
   size = int(math.ceil(math.sqrt(len(frame_layer))))
   fig, axes = plt.subplots(size, size, subplot_kw={'xticks': [], 'yticks': []})
@@ -59,6 +60,33 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
   if dest is not None:
     plt.savefig(dest, bbox_inches='tight')
 
+def plot_learning(curve, show=False, dest=None):
+  assert show or dest is not None
+  plt.clf()
+
+  fig, ax1 = plt.subplots()
+  ax1.set_ylabel('acc')
+  ax1.set_autoscaley_on(False)
+  ax1.set_ylim([0, 1])
+  l1 = ax1.plot(curve.seen, curve.train_acc, label='train acc')
+  l2 = ax1.plot(curve.seen, curve.valid_acc, label='valid acc')
+
+  ax2 = ax1.twinx()
+  max_loss = max(np.max(curve.train_loss), np.max(curve.valid_loss))
+  ax2.set_ylabel('loss')
+  ax2.set_ylim([0, max_loss])
+  l3 = ax2.plot(curve.seen, curve.train_loss, linestyle='--', label='train loss')
+  l4 = ax2.plot(curve.seen, curve.valid_loss, linestyle='--', label='valid loss')
+
+  ls = l1 + l2 + l3 + l4
+  labs = [l.get_label() for l in ls]
+  ax1.legend(ls, labs, loc=0)
+
+  if show:
+    plt.show()
+
+  if dest is not None:
+    plt.savefig(dest, bbox_inches='tight')
 
 def explore(env, model, variant, role, assert_complete=False):
   report_file = env.resolve_role_file(model, variant, role, 'report.json')
