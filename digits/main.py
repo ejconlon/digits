@@ -94,7 +94,8 @@ def inspect(env, loader, args):
     print('tensor_name:', key)
     print(reader.get_tensor(key))
 
-def write_results(env, model, variant, role, proc, metrics):
+# TODO write activations
+def write_results(env, model, variant, role, proc, metrics, activations):
   report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)
@@ -111,6 +112,10 @@ def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
   with open(params_file, 'w') as f:
     json.dump(vars(params), f, sort_keys=True, indent=2)
+
+# TODO run activations
+def run_activations(env, model, variant, proc, metrics):
+  return None
 
 def run_train(env, loader, args):
   assert args.model in MODELS
@@ -143,7 +148,8 @@ def run_train(env, loader, args):
     final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
     write_params(env, args.model, args.variant, final_params)
     if valid_metrics is not None:
-      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics)
+      valid_activations = run_activations(env, args.model, args.variant, valid_proc, valid_metrics)
+      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics, valid_activations)
       original_acc = valid_metrics.accuracy()
       best_valid_acc = original_acc
       best_variant = args.variant
@@ -159,7 +165,8 @@ def run_train(env, loader, args):
       cand_params, cand_valid_metrics = \
         run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i)
       write_params(env, args.model, variant_i, cand_params)
-      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics)
+      valid_activations = run_activations(env, args.model, variant_i, valid_proc, cand_valid_metrics)
+      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics, valid_activations)
       cand_valid_acc = cand_valid_metrics.accuracy()
       if best_valid_acc is None or cand_valid_acc > best_valid_acc:
         print('Better variant {} accuracy {}'.format(variant_i, cand_valid_acc))
@@ -181,7 +188,8 @@ def run_train(env, loader, args):
   if args.test_data is not None:
     gc.collect()
     test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-    write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
+    test_activations = run_activations(env, args.model, args.variant, test_proc, test_metrics)
+    write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations)
 
 def run_test(env, loader, args):
   assert args.model in MODELS
@@ -189,7 +197,8 @@ def run_test(env, loader, args):
   assert args.param_set in PARAMS[args.model]
   test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-  write_results(env, args.model, args.variant, 'test', test_proc, test_metrics)
+  test_activations = run_activations(env, args.model, args.variant, test_proc, test_metrics)
+  write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations)
 
 def report(env, loader, args):
   filename = env.resolve_role_file(args.model, args.variant, args.role, 'report.json')
@@ -280,7 +289,7 @@ def notebooks(env, loader, args):
 
 def run_model(
   env, loader, model, variant, train_data_name, valid_data_name, test_data_name,
-  preprocessor, param_set,  do_train, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
+  preprocessor, param_set, train=True, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
 
   train_args = argparse.Namespace(
     random_state=random_state,
@@ -307,7 +316,7 @@ def run_model(
     param_set=param_set
   )
 
-  if do_train:
+  if train:
     sub_main(env, loader, train_args)
     if check_ser and test_data_name is not None:
       test_metrics1 = unpickle_from(env.resolve_role_file(model, variant, 'test', 'metrics.pickle'))
@@ -322,7 +331,7 @@ def run_model(
 
 def drive(env, loader, args):
   config = next(c for c in CONFIGS if c.model == args.model and c.variant == args.variant)
-  run_model(env, loader, do_train=args.train, random_state=args.random_state, **config.__dict__)
+  run_model(env, loader, train=args.train, random_state=args.random_state, **config.__dict__)
   
 OPS = {
   'inspect': inspect,

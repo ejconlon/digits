@@ -200,7 +200,7 @@ def img_prepare_all(arr, use_gcn=True, use_lcn=True):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, half_rando=True):
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes
@@ -208,7 +208,7 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None):
   tot_size = batch_size
   if invert:
     tot_size = batch_size * 2
-  if step is None:
+  if step is None or (step % 2 == 0 and half_rando):
     # do random selection weighted by class
     seen = [0 for i in range(num_classes)]
     avail = list(range(num_classes))

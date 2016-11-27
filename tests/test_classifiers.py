@@ -24,6 +24,7 @@ def test_whatever():
     op='drive',
     model='tf',
     variant='mnist',
-    random_state=random_state
+    random_state=random_state,
+    train=True
   )
   sub_main(env, loader, args)
