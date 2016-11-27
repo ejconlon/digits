@@ -7,6 +7,7 @@ import os
 import pickle
 import random
 import shutil
+import time
 
 import numpy as np
 from sklearn.svm import SVC
@@ -112,6 +113,10 @@ def cnn(dataset, dropout, params, width, height, depth):
   conv_weights = []
   fc_weights = []
 
+  # Xavier seems much worse than just random normal
+  # initer = lambda: tf.contrib.layers.xavier_initializer()
+  initer = lambda: tf.truncated_normal_initializer()
+
   conv = dataset
   last_depth = depth
   i = 0
@@ -119,13 +124,13 @@ def cnn(dataset, dropout, params, width, height, depth):
     w = tf.get_variable(
       "CONV" + str(i),
       shape=[conv_width, conv_width, last_depth, conv_depth],
-      initializer=tf.contrib.layers.xavier_initializer()
+      initializer=initer()
     )
     b = tf.Variable(tf.random_normal([conv_depth]))
     conv = conv2d(conv, w, b)
     if pool_last or (i < num_conv - 1): # skip pool on last layer
       # TODO use lrn?
-      #conv = tf.nn.local_response_normalization(conv)
+      conv = tf.nn.local_response_normalization(conv)
       conv = maxpool2d(conv, k=2)
     last_depth = conv_depth
     conv_weights.append(w)
@@ -143,7 +148,7 @@ def cnn(dataset, dropout, params, width, height, depth):
     w = tf.get_variable(
       "FC" + str(i),
       shape=[last_conn, conn],
-      initializer=tf.contrib.layers.xavier_initializer()
+      initializer=initer()
     )
     b = tf.Variable(tf.random_normal([conn]))
     fc = tf.nn.relu(tf.nn.bias_add(tf.matmul(fc, w), b))
@@ -155,7 +160,7 @@ def cnn(dataset, dropout, params, width, height, depth):
   out_w = tf.get_variable(
       "OUT",
       shape=[last_conn, params.num_classes],
-      initializer=tf.contrib.layers.xavier_initializer()
+      initializer=initer()
     )
   out_b = tf.Variable(tf.random_normal([params.num_classes]))
   out = tf.add(tf.matmul(fc, out_w), out_b)
@@ -252,6 +257,7 @@ class TFModel(Model):
         break_count = 0
         assert params.break_display_step is None or params.break_display_step > 0
 
+        start_time = time.time()
         try:
           while step * params.batch_size < params.training_iters:   
             #gc.collect()
@@ -289,6 +295,8 @@ class TFModel(Model):
                   break
             # Now train for the round
             dataset, labels, _ = img_select(train_data.X, train_labels, train_inv, params.batch_size, rando, params.invert, step + step_offset)
+            assert dataset.shape[0] >= params.batch_size
+            assert labels.shape[0] == dataset.shape[0]
             feed_dict = {
               'dataset:0': dataset,
               'labels:0': labels,
@@ -304,6 +312,11 @@ class TFModel(Model):
             step += 1
         except KeyboardInterrupt:
           print('Caught interrupt. Halting training.')
+        end_time = time.time()
+        diff_time = end_time - start_time
+        print('trained in', diff_time, 'seconds')
+        total_seen = (step - 1)*params.batch_size
+        print('saw', total_seen, 'examples of', train_data.X.shape[0], 'total')
 
         print('saving')
         saver.save(session, ckpt_path)

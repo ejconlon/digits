@@ -23,13 +23,13 @@ PARAMS = {
       # update alpha after this number of steps
       decay_step = 500,
       # number of display steps to break if validation doesn't improve
-      break_display_step = 20,
+      break_display_step = 10,
       # TODO 150k for mnist
-      training_iters = 200000,
+      training_iters = 150000,  
       # number of examples per descent
-      batch_size = 200,
+      batch_size = 100,
       # number of examples per display step
-      display_size = 500,
+      display_size = 200,
       # number of batches per display/validation step
       display_step = 25,
       # keep_prob, 1.0 keep all

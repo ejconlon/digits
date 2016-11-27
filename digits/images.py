@@ -200,7 +200,7 @@ def img_prepare_all(arr, use_gcn=True, use_lcn=True):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, half_rando=True):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, half_rando=True, all_rando=False):
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes
@@ -208,7 +208,7 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, h
   tot_size = batch_size
   if invert:
     tot_size = batch_size * 2
-  if step is None or (step % 2 == 0 and half_rando):
+  if step is None or all_rando or (step % 2 == 0 and half_rando):
     # do random selection weighted by class
     seen = [0 for i in range(num_classes)]
     avail = list(range(num_classes))
@@ -259,12 +259,8 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, h
       j += 2
     else:
       j += 1
-  if invert:
-    assert Xb.shape[0] == batch_size * 2
-    assert yb.shape[0] == batch_size * 2
-    assert Xi.shape[0] == batch_size * 2
-  else:
-    assert Xb.shape[0] == batch_size
-    assert yb.shape[0] == batch_size
-    assert Xi.shape[0] == batch_size
+  assert j == tot_size
+  assert Xb.shape[0] == tot_size
+  assert yb.shape[0] == tot_size
+  assert Xi.shape[0] == tot_size
   return (Xb, yb, Xi)
