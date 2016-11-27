@@ -43,7 +43,7 @@ class Model:
     return self.env.resolve_role_file(self.name, self.variant, role, filename, clean)
 
   @abstractmethod
-  def train(self, params, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None, max_acc=None):
     """ Return (train preds, valid preds) """
     pass
 
@@ -53,7 +53,7 @@ class Model:
     pass
 
 class BaselineModel(Model):
-  def train(self, params, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None, max_acc=None):
     clf_file = self._resolve_model_file('model.clf', clean=True)
     clf = SVC()
     print('baseline fitting')
@@ -212,7 +212,7 @@ class TFModel(Model):
 
     return (graph, loss, saver, writer, summaries, optimizer)
 
-  def train(self, params, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None, max_acc=None):
     ckpt_path = self._resolve_model_file('model.ckpt', clean=True)
     csv_path = self._resolve_model_file('learning_curve.csv')
     with open(csv_path, 'w') as csv_file:
@@ -290,7 +290,7 @@ class TFModel(Model):
                 if break_count >= params.break_display_step:
                   print('breaking early because not improving')
                   break
-                if params.max_acc is not None and acc >= params.max_acc:
+                if max_acc is not None and acc >= max_acc:
                   print('breaking early because of artificial accuracy limit')
                   break
             # Now train for the round
@@ -404,7 +404,7 @@ MODELS = {
   'vote': VoteModel
 }
 
-def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None, search_index=None):
+def run_train_model(env, name, variant, train_data, valid_data, param_set, search_set=None, search_index=None, max_acc=None):
   model = MODELS[name](env, name, variant)
   orig_params = PARAMS[name][param_set]  
   if search_set is not None:
@@ -421,7 +421,7 @@ def run_train_model(env, name, variant, train_data, valid_data, param_set, searc
         setattr(params, k, random.choice(vs))
   else:
     params = orig_params
-  valid_pred = model.train(params, train_data, valid_data)
+  valid_pred = model.train(params, train_data, valid_data, max_acc=max_acc)
   if valid_pred is not None:
     valid_metrics = Metrics(params.num_classes, valid_pred, valid_data.y)
   else:

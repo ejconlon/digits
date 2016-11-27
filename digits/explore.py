@@ -129,9 +129,9 @@ def explore(env, model, variant, role, assert_complete=False):
     assert report is not None
     assert metrics is not None
     assert viz is not None
-    assert learning_curve is not None
     assert params is not None
     if model == 'tf':
+      assert learning_curve is not None
       assert conv_weights is not None
       # TODO enable
       #assert activations is not None

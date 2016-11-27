@@ -68,6 +68,7 @@ def make_parser():
   drive_train_parser.add_argument('--train', dest='train', action='store_true')
   drive_train_parser.add_argument('--no-train', dest='train', action='store_false')
   drive_parser.set_defaults(train=True)
+  drive_parser.add_argument('--max-acc', type=float)
   report_parser = subparsers.add_parser('report')
   report_parser.add_argument('--model', required=True)
   report_parser.add_argument('--variant')
@@ -113,14 +114,17 @@ def write_results(env, model, variant, role, proc, metrics, activations):
   # Now plot stuff!
   e = explore(env, model, variant, role, assert_complete=False)
   if role == 'valid':
-    curve_file = env.resolve_model_file(model, variant, 'learning_curve.png', clean=True)
-    plot_learning(e.learning_curve, dest=curve_file)
-    weights_file = env.resolve_model_file(model, variant, 'weights_0.png', clean=True)
-    plot_weights(e.conv_weights, 0, dest=weights_file)
-  viz_dict = e.viz._asdict()
-  for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
-    out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
-    plot_images(viz_dict[target], lambda r: '%d (%.2f)' % (r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
+    if e.learning_curve is not None:
+      curve_file = env.resolve_model_file(model, variant, 'learning_curve.png', clean=True)
+      plot_learning(e.learning_curve, dest=curve_file)
+    if e.conv_weights is not None:
+      weights_file = env.resolve_model_file(model, variant, 'weights_0.png', clean=True)
+      plot_weights(e.conv_weights, 0, dest=weights_file)
+  if model == 'tf':
+    viz_dict = e.viz._asdict()
+    for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
+      out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
+      plot_images(viz_dict[target], lambda r: '%d (%.2f)' % (r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
@@ -159,7 +163,7 @@ def run_train(env, loader, args):
   if args.search_set is None or args.search_default:
     gc.collect()
     print('running default variant')
-    final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set)
+    final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set, max_acc=args.max_acc)
     write_params(env, args.model, args.variant, final_params)
     if valid_metrics is not None:
       valid_activations = run_activations(env, args.model, args.variant, valid_proc, valid_metrics)
@@ -177,7 +181,7 @@ def run_train(env, loader, args):
       gc.collect()
       variant_i = args.variant + '__' + str(i)
       cand_params, cand_valid_metrics = \
-        run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i)
+        run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i, max_acc=args.max_acc)
       write_params(env, args.model, variant_i, cand_params)
       valid_activations = run_activations(env, args.model, variant_i, valid_proc, cand_valid_metrics)
       write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics, valid_activations)
@@ -303,7 +307,7 @@ def notebooks(env, loader, args):
 
 def run_model(
   env, loader, model, variant, train_data_name, valid_data_name, test_data_name,
-  preprocessor, param_set, train=True, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
+  preprocessor, param_set, max_acc, train=True, search_set=None, search_size=None, search_default=True, check_ser=False, random_state=None):
 
   train_args = argparse.Namespace(
     random_state=random_state,
@@ -317,7 +321,8 @@ def run_model(
     param_set=param_set,
     search_set=search_set,
     search_size=search_size,
-    search_default=search_default
+    search_default=search_default,
+    max_acc=max_acc
   )
 
   test_args = argparse.Namespace(
@@ -345,7 +350,8 @@ def run_model(
 
 def drive(env, loader, args):
   config = next(c for c in CONFIGS if c.model == args.model and c.variant == args.variant)
-  run_model(env, loader, train=args.train, random_state=args.random_state, **config.__dict__)
+  run_model(env, loader, max_acc=args.max_acc, train=args.train,
+    random_state=args.random_state, **config.__dict__)
   
 OPS = {
   'inspect': inspect,

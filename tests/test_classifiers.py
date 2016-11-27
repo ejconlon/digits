@@ -19,12 +19,47 @@ loader.assert_ready()
 # random_state = random.randint(0, 1000)
 random_state = 71
 
-def test_whatever():
+# SLOW!
+# def test_baseline_mnist():
+#   args = Namespace(
+#     op='drive',
+#     model='baseline',
+#     variant='mnist',
+#     random_state=random_state,
+#     train=True,
+#     max_acc=None
+#   )
+#   sub_main(env, loader, args)
+
+def test_baseline_crop():
+  args = Namespace(
+    op='drive',
+    model='baseline',
+    variant='crop-small',
+    random_state=random_state,
+    train=True,
+    max_acc=None
+  )
+  sub_main(env, loader, args)
+
+def test_mnist():
   args = Namespace(
     op='drive',
     model='tf',
     variant='mnist',
     random_state=random_state,
-    train=True
+    train=True,
+    max_acc=0.8
+  )
+  sub_main(env, loader, args)
+
+def test_crop():
+  args = Namespace(
+    op='drive',
+    model='tf',
+    variant='crop-small',
+    random_state=random_state,
+    train=True,
+    max_acc=0.4
   )
   sub_main(env, loader, args)
