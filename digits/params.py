@@ -412,6 +412,16 @@ CONFIGS = [
 
   Namespace(
     model='baseline',
+    variant='crop-big',
+    train_data_name='crop-train-big',
+    valid_data_name='crop-valid-big',
+    test_data_name='crop-test-big',
+    preprocessor='hog',
+    param_set='crop'
+  ),
+
+  Namespace(
+    model='baseline',
     variant='mnist',
     train_data_name='mnist-train',
     valid_data_name='mnist-valid',

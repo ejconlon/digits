@@ -52,6 +52,14 @@ clean:
 nuke: clean
 	rm -rf data/*
 
+train:
+	@$(MAKE) run ARGS="drive --model=tf --variant=mnist"
+	@$(MAKE) run ARGS="drive --model=tf --variant=crop-huge"
+	@$(MAKE) run ARGS="drive --model=vote --variant=mnist"
+	@$(MAKE) run ARGS="drive --model=vote --variant=crop-huge"
+	@$(MAKE) run ARGS="drive --model=baseline --variant=mnist"
+	@$(MAKE) run ARGS="drive --model=baseline --variant=crop-big"
+
 test:
 	py.test tests
 
