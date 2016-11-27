@@ -94,16 +94,18 @@ def inspect(env, loader, args):
     print('tensor_name:', key)
     print(reader.get_tensor(key))
 
-# TODO write activations
 def write_results(env, model, variant, role, proc, metrics, activations):
   report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)
+  activations_file = env.resolve_role_file(model, variant, role, 'activations.pickle', clean=True)
   pickle_to(metrics, metrics_file)
   report = metrics.report()
   write_report(report, report_file)
   viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
+  if activations is not None:
+    pickle_to(activations, activations_file)
   print(env.model_name_plus(model, variant), '/', role)
   print('accuracy', metrics.accuracy())
   metrics.print_classification_report()

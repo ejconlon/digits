@@ -27,15 +27,15 @@ PARAMS = {
       # TODO 150k for mnist
       training_iters = 200000,
       # number of examples per descent
-      batch_size = 200,
+      batch_size = 100,
       # number of examples per display step
-      display_size = 500,
+      display_size = 200,
       # number of batches per display/validation step
       display_step = 25,
       # keep_prob, 1.0 keep all
       dropout = 0.95,
       # (width, depth) of convolutional layers
-      convs = [(7, 32), (5, 64)],
+      convs = [(5, 32), (5, 64)],
       # size of fully connected layers
       fcs = [1024],
       # randomize image rotation, etc

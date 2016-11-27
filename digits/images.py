@@ -220,13 +220,20 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, h
         avail.remove(klass)
       index = np.random.choice(y_inv[klass])
       indices.append(index)
+    assert len(indices) == batch_size
+    # print("rando", len(indices))
   else:
     # do sequential selection
     max_blocks = min(len(yi) // per_class for yi in y_inv)
-    block = step % max_blocks
+    if half_rando:
+      step_adj = step // 2
+    else:
+      step_adj = step
+    block = step_adj % max_blocks
     # print('block', block, 'of', max_blocks)
     start = block * per_class
     end = start + per_class
+    # print("seq", block, per_class, start, end, start-end)
     indices = [i for yi in y_inv for i in yi[start:end]]
     assert len(indices) == batch_size
   lim = X.shape[0]
@@ -252,4 +259,12 @@ def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, h
       j += 2
     else:
       j += 1
+  if invert:
+    assert Xb.shape[0] == batch_size * 2
+    assert yb.shape[0] == batch_size * 2
+    assert Xi.shape[0] == batch_size * 2
+  else:
+    assert Xb.shape[0] == batch_size
+    assert yb.shape[0] == batch_size
+    assert Xi.shape[0] == batch_size
   return (Xb, yb, Xi)

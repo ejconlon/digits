@@ -241,7 +241,7 @@ class TFModel(Model):
         writer.add_graph(graph)
 
         step = 0
-        step_offset = random.randint(0, 100000)
+        step_offset = random.randint(0, 10000)
         num_examples = train_data.X.shape[0]
 
         assert params.alpha is not None

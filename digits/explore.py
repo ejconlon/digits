@@ -23,7 +23,8 @@ Explorer = namedtuple('Explorer', [
   'viz',
   'learning_curve',
   'params',
-  'conv_weights'
+  'conv_weights',
+  'activations'
 ])
 
 def parse_weights(conv_weights):
@@ -66,6 +67,7 @@ def explore(env, model, variant, role, assert_complete=False):
   lc_file = env.resolve_model_file(model, variant, 'learning_curve.csv')
   params_file = env.resolve_model_file(model, variant, 'params.json')
   cw_file = env.resolve_model_file(model, variant, 'conv_weights.pickle')
+  act_file = env.resolve_role_file(model, variant, role, 'activations.pickle')
   if os.path.isfile(report_file):
     report = read_report(report_file)
   else:
@@ -91,6 +93,10 @@ def explore(env, model, variant, role, assert_complete=False):
     conv_weights = parse_weights(unpickle_from(cw_file))
   else:
     conv_weights = None
+  if os.path.isfile(act_file):
+    activations = unpickle_from(act_file)
+  else:
+    activations = None
   if assert_complete:
     assert report is not None
     assert metrics is not None
@@ -99,7 +105,9 @@ def explore(env, model, variant, role, assert_complete=False):
     assert params is not None
     if model == 'tf':
       assert conv_weights is not None
-  return Explorer(report, metrics, viz, learning_curve, params, conv_weights)
+      # TODO enable
+      #assert activations is not None
+  return Explorer(report, metrics, viz, learning_curve, params, conv_weights, activations)
 
 # show image or array of them in ipython
 def img_show(arr):
