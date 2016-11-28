@@ -38,7 +38,9 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
   fig, axes = plt.subplots(size, size, subplot_kw={'xticks': [], 'yticks': []})
   i = 0
   for ax in axes.flat:
-    for _, fi in frame_layer.iterrows():
+    if i < len(frame_layer):
+      fi = frame_layer.iloc[i]
+      assert fi.layer == layer
       ws = fi.to_dict()['weights']
       x, _ = img_fudge(ws)
       ax.imshow(x, interpolation='nearest', cmap='seismic')
@@ -50,7 +52,7 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest)
+    plt.savefig(dest, bbox_inches='tight')
 
 def plot_learning(curve, show=False, dest=None):
   assert show or dest is not None
@@ -78,7 +80,7 @@ def plot_learning(curve, show=False, dest=None):
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest)
+    plt.savefig(dest, bbox_inches='tight')
 
 def explore(env, model, variant, role, assert_complete=False):
   report_file = env.resolve_role_file(model, variant, role, 'report.json')
@@ -218,4 +220,38 @@ def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=No
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest)
+    plt.savefig(dest, bbox_inches='tight')
+
+def plot_images_array(arr, rows=None, cols=None, show=False, dest=None):
+  assert show or dest is not None
+  plt.clf()
+
+  if rows is None:
+    assert cols is None
+    rows = int(math.ceil(math.sqrt(arr.shape[0])))
+    cols = rows
+  else:
+    assert cols is not None
+  
+  fig, axes = plt.subplots(rows, cols, subplot_kw={'xticks': [], 'yticks': []})
+
+  fig.subplots_adjust(hspace=0.5, wspace=0.2)
+
+  i = 0
+  for ax in axes.flat:
+    if i < arr.shape[0]:
+      img, is_gray = img_fudge(arr[i])
+      if is_gray:
+        cmap = 'gray'
+      else:
+        cmap = None
+      ax.imshow(img, cmap=cmap, interpolation='nearest')
+    else:
+      ax.set_visible(False)
+    i += 1
+
+  if show:
+    plt.show()
+
+  if dest is not None:
+    plt.savefig(dest, bbox_inches='tight')

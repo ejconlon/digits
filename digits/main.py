@@ -32,7 +32,7 @@ from .data import Env, Loader, RandomStateContext
 from .classifiers import run_train_model, run_test_model, MODELS, TFModel
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
 from .params import PARAMS, SEARCH, CONFIGS, find_search_size, has_search_size
-from .explore import explore, plot_learning, plot_weights, plot_images
+from .explore import explore, plot_learning, plot_weights, plot_images, plot_images_array
 
 def make_parser():
   parser = argparse.ArgumentParser()
@@ -122,10 +122,15 @@ def write_results(env, model, variant, role, proc, metrics, activations, viz):
   if model == 'tf':
     viz_dict = e.viz._asdict()
     for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
-      out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
+      out_file = env.resolve_role_file(model, variant, role, target + '_images.png', clean=True)
+      out_file2 = env.resolve_role_file(model, variant, role, target + '_activations.png', clean=True)
       # The to_dict in the lambda here is to get around pandas indexing with python 2
       # that expects one dimensional array cells
       plot_images(viz_dict[target], lambda r: '%d not %d (%.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.to_dict()['proc_image'], dest=out_file)
+      if len(activations[target]) > 0:
+        f = activations[target]
+        x = f[(f.layer == 0) & (f.image == 0)]
+        plot_images(x, lambda r: None, lambda r: r.to_dict()['activations'], dest=out_file2)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
@@ -138,10 +143,18 @@ def run_activations(env, model, variant, proc, metrics):
     viz_dict = viz._asdict()
     activations = {}
     model = TFModel(env, model, variant)
+    columns = ['layer', 'image', 'channel', 'activations']
     for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
       vs = viz_dict[target].proc_image.values
       X = np.array([vs[i] for i in range(len(vs))])
-      activations[target] = model.activations(X)
+      acts = model.activations(X)
+      recs = []
+      for layer in range(len(acts)):
+        for index in range(acts[layer].shape[0]):
+          for channel in range(acts[layer].shape[1]):
+            a = acts[layer][index][channel]
+            recs.append({ 'layer': layer, 'image': index, 'channel': channel, 'activations': a })
+      activations[target] = pd.DataFrame.from_records(recs, columns=columns)
   else:
     activations = None
   return (activations, viz)
