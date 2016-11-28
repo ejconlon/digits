@@ -368,14 +368,14 @@ class TFModel(Model):
 
 
 class VoteModel(Model):
-  def train(self, params, train_data, valid_data=None):
+  def train(self, params, train_data, valid_data=None, max_acc=None):
     num_models = params.num_classes
     assert num_models > 0
     preds = []
     for i in range(num_models):  
       print('Training sub-model', i)
       model = TFModel(self.env, 'tf', self.variant + '__vote__' + str(i))
-      pred = model.train(params, train_data, valid_data)
+      pred = model.train(params, train_data, valid_data, max_acc)
       if valid_data is not None:
         assert pred is not None
         preds.append(pred)
