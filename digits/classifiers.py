@@ -10,6 +10,7 @@ import shutil
 import time
 
 import numpy as np
+import pandas as pd
 from sklearn.svm import SVC
 import tensorflow as tf
 
@@ -77,17 +78,6 @@ class BaselineModel(Model):
     test_pred = clf.predict(test_data.X)
     return one_hot(params.num_classes, test_pred)
 
-
-# conv2d/maxpool2d definition from
-# https://github.com/aymericdamien/TensorFlow-Examples/blob/master/notebooks/3_NeuralNetworks/convolutional_network.ipynb
-def conv2d(x, W, b, strides=1):
-  x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
-  x = tf.nn.bias_add(x, b)
-  return tf.nn.relu(x)
-
-def maxpool2d(x, k=2):
-  return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
-
 def cnn(dataset, dropout, params, width, height, depth):
   num_conv = len(params.convs)
   num_fc = len(params.fcs)
@@ -110,6 +100,7 @@ def cnn(dataset, dropout, params, width, height, depth):
   assert ch * (1 << factor) == height
   unconn = cw * ch * params.convs[-1][1]
 
+  acts = []
   conv_weights = []
   fc_weights = []
 
@@ -127,11 +118,13 @@ def cnn(dataset, dropout, params, width, height, depth):
       initializer=initer()
     )
     b = tf.Variable(tf.random_normal([conv_depth]))
-    conv = conv2d(conv, w, b)
+    conv = tf.nn.conv2d(conv, w, strides=[1, 1, 1, 1], padding='SAME')
+    conv = tf.nn.relu(tf.nn.bias_add(conv, b))
+    acts.append(conv)
     if pool_last or (i < num_conv - 1): # skip pool on last layer
       # TODO use lrn?
       conv = tf.nn.local_response_normalization(conv)
-      conv = maxpool2d(conv, k=2)
+      conv = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     last_depth = conv_depth
     conv_weights.append(w)
     i += 1
@@ -165,7 +158,26 @@ def cnn(dataset, dropout, params, width, height, depth):
   out_b = tf.Variable(tf.random_normal([params.num_classes]))
   out = tf.add(tf.matmul(fc, out_w), out_b)
 
-  return (out, conv_weights, fc_weights, out_w)
+  return (out, conv_weights, fc_weights, out_w, acts)
+
+def parse_weights(conv_weights):
+  w_recs = []
+  d = 0
+  for ws in conv_weights:
+    xs = np.moveaxis(ws, [2,3], [0,1])
+    xs = xs.reshape((xs.shape[0]*xs.shape[1], xs.shape[2], xs.shape[3]))
+    for i in range(xs.shape[0]):
+      w_recs.append({'layer': d, 'channel': i, 'width': xs.shape[2], 'weights': xs[i]})
+    d += 1
+  return pd.DataFrame.from_records(w_recs, columns=['layer', 'channel', 'width', 'weights'])
+
+def parse_activations(activations):
+    acts = []
+    for orig in activations:
+        xs = np.array([orig[i] for i in range(len(orig))])
+        xs = np.moveaxis(xs, [3], [1])
+        acts.append(xs)
+    return acts
 
 class TFModel(Model):
   def _graph(self, params, width, height, depth):
@@ -182,9 +194,11 @@ class TFModel(Model):
       global_step = tf.placeholder(tf.int32, name='global_step')
       decay_factor = tf.placeholder(tf.float32, name='decay_factor')
     
-      logits, conv_weights, fc_weights, out_w = cnn(dataset, keep_prob, params, width, height, depth)
+      logits, conv_weights, fc_weights, out_w, acts = cnn(dataset, keep_prob, params, width, height, depth)
       for cw in conv_weights:
-         tf.add_to_collection('conv_weights', cw)
+        tf.add_to_collection('conv_weights', cw)
+      for act in acts:
+        tf.add_to_collection('activations', act)
 
       # reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
       #       sum(tf.nn.l2_loss(w) for w in fc_weights)
@@ -322,7 +336,8 @@ class TFModel(Model):
         saver.save(session, ckpt_path)
 
         print('writing weights')
-        conv_weights = session.run([tf.get_collection('conv_weights')])
+        [conv_weights] = session.run([tf.get_collection('conv_weights')])
+        conv_weights = parse_weights(conv_weights)
         cw_file = self._resolve_model_file('conv_weights.pickle', clean=True)
         with open(cw_file, 'wb') as f:
           pickle.dump(conv_weights, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -366,6 +381,15 @@ class TFModel(Model):
         return np.concatenate(preds)
       return batch_pred(test_data.X, test_labels)
 
+  def activations(self, X):
+    ckpt_path = self._resolve_model_file('model.ckpt')
+    graph = tf.Graph()
+    with tf.Session(graph=graph) as session:
+      new_saver = tf.train.import_meta_graph(ckpt_path+'.meta')
+      new_saver.restore(session, ckpt_path)
+      feed_dict = {'dataset:0': X}
+      [activations] = session.run([tf.get_collection('activations')], feed_dict=feed_dict)
+      return parse_activations(activations)
 
 class VoteModel(Model):
   def train(self, params, train_data, valid_data=None, max_acc=None):

@@ -29,7 +29,7 @@ with warnings.catch_warnings():
   import nbconvert
 
 from .data import Env, Loader, RandomStateContext
-from .classifiers import run_train_model, run_test_model, MODELS
+from .classifiers import run_train_model, run_test_model, MODELS, TFModel
 from .metrics import Metrics, read_report, write_report, pickle_to, unpickle_from
 from .params import PARAMS, SEARCH, CONFIGS, find_search_size, has_search_size
 from .explore import explore, plot_learning, plot_weights, plot_images
@@ -96,7 +96,7 @@ def inspect(env, loader, args):
     print('tensor_name:', key)
     print(reader.get_tensor(key))
 
-def write_results(env, model, variant, role, proc, metrics, activations):
+def write_results(env, model, variant, role, proc, metrics, activations, viz):
   report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)
@@ -104,7 +104,6 @@ def write_results(env, model, variant, role, proc, metrics, activations):
   pickle_to(metrics, metrics_file)
   report = metrics.report()
   write_report(report, report_file)
-  viz = metrics.viz(proc, 10)
   pickle_to(viz, viz_file)
   if activations is not None:
     pickle_to(activations, activations_file)
@@ -124,16 +123,26 @@ def write_results(env, model, variant, role, proc, metrics, activations):
     viz_dict = e.viz._asdict()
     for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
       out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
-      plot_images(viz_dict[target], lambda r: '%d (%.2f)' % (r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
+      plot_images(viz_dict[target], lambda r: '%d not %d (%.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
   with open(params_file, 'w') as f:
     json.dump(vars(params), f, sort_keys=True, indent=2)
 
-# TODO run activations
 def run_activations(env, model, variant, proc, metrics):
-  return None
+  viz = metrics.viz(proc, 10)
+  if model == 'tf':
+    viz_dict = viz._asdict()
+    activations = {}
+    model = TFModel(env, model, variant)
+    for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
+      vs = viz_dict[target].proc_image.values
+      X = np.array([vs[i] for i in range(len(vs))])
+      activations[target] = model.activations(X)
+  else:
+    activations = None
+  return (activations, viz)
 
 def run_train(env, loader, args):
   assert args.model in MODELS
@@ -166,8 +175,8 @@ def run_train(env, loader, args):
     final_params, valid_metrics = run_train_model(env, args.model, args.variant, train_proc, valid_proc, args.param_set, max_acc=args.max_acc)
     write_params(env, args.model, args.variant, final_params)
     if valid_metrics is not None:
-      valid_activations = run_activations(env, args.model, args.variant, valid_proc, valid_metrics)
-      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics, valid_activations)
+      valid_activations, valid_viz = run_activations(env, args.model, args.variant, valid_proc, valid_metrics)
+      write_results(env, args.model, args.variant, 'valid', valid_proc, valid_metrics, valid_activations, valid_viz)
       original_acc = valid_metrics.accuracy()
       best_valid_acc = original_acc
       best_variant = args.variant
@@ -183,8 +192,8 @@ def run_train(env, loader, args):
       cand_params, cand_valid_metrics = \
         run_train_model(env, args.model, variant_i, train_proc, valid_proc, args.param_set, args.search_set, i, max_acc=args.max_acc)
       write_params(env, args.model, variant_i, cand_params)
-      valid_activations = run_activations(env, args.model, variant_i, valid_proc, cand_valid_metrics)
-      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics, valid_activations)
+      valid_activations, valid_viz = run_activations(env, args.model, variant_i, valid_proc, cand_valid_metrics)
+      write_results(env, args.model, variant_i, 'valid', valid_proc, cand_valid_metrics, valid_activations, valid_viz)
       cand_valid_acc = cand_valid_metrics.accuracy()
       if best_valid_acc is None or cand_valid_acc > best_valid_acc:
         print('Better variant {} accuracy {}'.format(variant_i, cand_valid_acc))
@@ -206,8 +215,8 @@ def run_train(env, loader, args):
   if args.test_data is not None:
     gc.collect()
     test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-    test_activations = run_activations(env, args.model, args.variant, test_proc, test_metrics)
-    write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations)
+    test_activations, test_viz = run_activations(env, args.model, args.variant, test_proc, test_metrics)
+    write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations, test_viz)
 
 def run_test(env, loader, args):
   assert args.model in MODELS
@@ -215,8 +224,8 @@ def run_test(env, loader, args):
   assert args.param_set in PARAMS[args.model]
   test_proc = loader.load_data(args.test_data, args.preprocessor, args.random_state)
   test_metrics = run_test_model(env, args.model, args.variant, test_proc, args.param_set)
-  test_activations = run_activations(env, args.model, args.variant, test_proc, test_metrics)
-  write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations)
+  test_activations, test_viz = run_activations(env, args.model, args.variant, test_proc, test_metrics)
+  write_results(env, args.model, args.variant, 'test', test_proc, test_metrics, test_activations, test_viz)
 
 def report(env, loader, args):
   filename = env.resolve_role_file(args.model, args.variant, args.role, 'report.json')

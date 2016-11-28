@@ -27,17 +27,6 @@ Explorer = namedtuple('Explorer', [
   'activations'
 ])
 
-def parse_weights(conv_weights):
-  w_recs = []
-  d = 0
-  for ws in conv_weights[0]:
-    xs = np.moveaxis(ws, [2,3], [0,1])
-    xs = xs.reshape((xs.shape[0]*xs.shape[1], xs.shape[2], xs.shape[3]))
-    for i in range(xs.shape[0]):
-      w_recs.append({'layer': d, 'channel': i, 'width': xs.shape[2], 'weights': xs[i]})
-    d += 1
-  return pd.DataFrame.from_records(w_recs, columns=['layer', 'channel', 'width', 'weights'])
-
 def plot_weights(weight_frame, layer, show=False, dest=None):
   assert show or dest is not None
   plt.clf()
@@ -118,7 +107,7 @@ def explore(env, model, variant, role, assert_complete=False):
   else:
     params = None
   if os.path.isfile(cw_file):
-    conv_weights = parse_weights(unpickle_from(cw_file))
+    conv_weights = unpickle_from(cw_file)
   else:
     conv_weights = None
   if os.path.isfile(act_file):
