@@ -4,6 +4,7 @@ machine:
 
 dependencies:
   override:
+    - sudo apt-get update
     - make deps-linux
     - make fetch
   cache_directories:
