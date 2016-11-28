@@ -123,7 +123,9 @@ def write_results(env, model, variant, role, proc, metrics, activations, viz):
     viz_dict = e.viz._asdict()
     for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
       out_file = env.resolve_role_file(model, variant, role, target + '.png', clean=True)
-      plot_images(viz_dict[target], lambda r: '%d not %d (%.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.proc_image, dest=out_file)
+      # The to_dict in the lambda here is to get around pandas indexing with python 2
+      # that expects one dimensional array cells
+      plot_images(viz_dict[target], lambda r: '%d not %d (%.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.to_dict()['proc_image'], dest=out_file)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)

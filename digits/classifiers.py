@@ -329,7 +329,7 @@ class TFModel(Model):
         end_time = time.time()
         diff_time = end_time - start_time
         print('trained in', diff_time, 'seconds')
-        total_seen = (step - 1)*params.batch_size
+        total_seen = step*params.batch_size
         print('saw', total_seen, 'examples of', train_data.X.shape[0], 'total')
 
         print('saving')

@@ -7,6 +7,8 @@ import os
 import warnings
 
 from IPython.core.display import HTML, display
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -36,8 +38,9 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
   fig, axes = plt.subplots(size, size, subplot_kw={'xticks': [], 'yticks': []})
   i = 0
   for ax in axes.flat:
-    if i < len(frame_layer):
-      x, _ = img_fudge(frame_layer.iloc[i].weights)
+    for _, fi in frame_layer.iterrows():
+      ws = fi.to_dict()['weights']
+      x, _ = img_fudge(ws)
       ax.imshow(x, interpolation='nearest', cmap='seismic')
     else:
       ax.set_visible(False)
@@ -47,7 +50,7 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest, bbox_inches='tight')
+    plt.savefig(dest)
 
 def plot_learning(curve, show=False, dest=None):
   assert show or dest is not None
@@ -75,7 +78,7 @@ def plot_learning(curve, show=False, dest=None):
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest, bbox_inches='tight')
+    plt.savefig(dest)
 
 def explore(env, model, variant, role, assert_complete=False):
   report_file = env.resolve_role_file(model, variant, role, 'report.json')
@@ -215,4 +218,4 @@ def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=No
     plt.show()
 
   if dest is not None:
-    plt.savefig(dest, bbox_inches='tight')
+    plt.savefig(dest)
