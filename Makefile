@@ -69,6 +69,10 @@ test-verbose:
 tensorboard:
 	python -m tensorflow.tensorboard --logdir=logs/
 
+copy-figures:
+	rm -rf results/figures
+	mkdir -p results/figures
+
 report-clean:
 	cd report && rm -f report.{aux,log,out,toc,bcf,bbl,blg,run.xml}
 
