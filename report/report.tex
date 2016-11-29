@@ -65,9 +65,23 @@ There are a few guiding principles to the implementation of this application:
 
 See Figure \ref{fig:pipeline} for a visualization of the pipeline.
 
+- Preprocessing of images
+- Train/Valid/Test split
+- Parameter selection
+- Standard metrics
+
 \section{Conventional Solution}
 
+- Conventional learning requires feature extraction before learning
+- Like the paper, Use HOG + SVM
+- Practical reasons prevent SVM from being trained on the large cropped dataset so compare mnist
+
 \section{Deep Learning Solution}
+
+- Use CNN
+- No features extraction step
+- Does require extensive tuning and parameter selection
+- Voting improves performance
 
 \section{Conclusion}
 
