@@ -482,6 +482,16 @@ CONFIGS = [
   ),
 
   Namespace(
+    model='vote',
+    variant='crop-huge',
+    train_data_name='crop-train-huge',
+    valid_data_name='crop-valid-huge',
+    test_data_name='crop-test-big',
+    preprocessor='color',
+    param_set='crop'
+  ),
+
+  Namespace(
     model='tf',
     variant='mnist-search',
     train_data_name='mnist-train',
