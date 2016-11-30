@@ -31,7 +31,7 @@ Explorer = namedtuple('Explorer', [
 
 def plot_weights(weight_frame, layer, show=False, dest=None):
   assert show or dest is not None
-  plt.clf()
+  plt.close()
 
   frame_layer = weight_frame[weight_frame.layer == layer]
   size = int(math.ceil(math.sqrt(len(frame_layer))))
@@ -56,7 +56,7 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
 
 def plot_learning(curve, show=False, dest=None):
   assert show or dest is not None
-  plt.clf()
+  plt.close()
 
   fig, ax1 = plt.subplots()
   ax1.set_ylabel('acc')
@@ -186,7 +186,7 @@ def viz_table(tab):
 
 def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=None):
   assert show or dest is not None
-  plt.clf()
+  plt.close()
 
   if rows is None:
     assert cols is None
@@ -224,7 +224,7 @@ def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=No
 
 def plot_images_array(arr, rows=None, cols=None, show=False, dest=None):
   assert show or dest is not None
-  plt.clf()
+  plt.close()
 
   if rows is None:
     assert cols is None

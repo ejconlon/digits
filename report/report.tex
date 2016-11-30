@@ -13,6 +13,7 @@
 \usepackage{csquotes}
 \usepackage{svg}
 \usepackage{csvsimple}
+\usepackage{graphicx}
 \usepackage[
 backend=biber,
 style=alphabetic,
@@ -43,7 +44,7 @@ In this report I explain some simple approaches to classification of both datase
 
 \section{Datasets}
 
-MNIST is a classic labeled dataset consisting of single handwritten digits (0-9) that have been extensively processed. Each digit is centered alone within a 28x28 grid, and all pixel intensities are set to 0 (background) and 1 (foreground). These images do not require common preprocessing techniques such as rescaling, contrast enhancement, or whitening to be immediately useful. There are around 60,000 training examples and 10,000 test examples.
+MNIST is a classic labeled dataset consisting of single handwritten digits (0-9) that have been extensively processed. Each digit is centered alone within a 28x28 grid, and all pixel intensities are between to 0 (background) and 255 (foreground). These images do not require common preprocessing techniques such as rescaling, contrast enhancement, or whitening to be immediately useful. There are around 60,000 training examples and 10,000 test examples.
 
 SVHN is a labeled dataset that comes from images of house numbers collected by Google's Street View project. The digits have a wide variety of foreground and background colors, textures, noise, distractions, orientations, and scales. There are two formats provided: the first includes raw images with sets of bounding rectangles, and the second includes a more MNIST-like centered digits. The models here consume only the second format, but I will say more about this classifiers applicability to the first. Overall, this dataset contains almost 8 times more examples than MNIST.
 
@@ -64,6 +65,34 @@ The application follows a standard machine learning pipeline model. See Figure \
   \includesvg[height=\textheight,width=\columnwidth]{pipeline}
   \caption{Pipeline stages}
   \label{fig:pipeline}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/mnist_orig.png}
+  \caption{MNIST sample}
+  \label{fig:mnist_orig}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/mnist_aug.png}
+  \caption{MNIST augmented}
+  \label{fig:mnist_aug}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/crop_orig.png}
+  \caption{SVHN sample}
+  \label{fig:crop_orig}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/crop_proc.png}
+  \caption{SVHN processed}
+  \label{fig:crop_proc}
 \end{figure}
 
 \section{Preprocessing and Augmentation}
@@ -88,13 +117,13 @@ Conventional learning requires that we extract relevant features from our datase
 
 One such representation uses Histogram of Oriented Gradients (HOG) as the feature space \cite{netzer2011reading}.  HOG first calculates approximate gradients in both directions for each pixel in the image, then yields a gradient that is the weighted mode of those gradients in a neighborhood around each pixel. The intuition is that changes in value between pixels are more relevant than the pixel values themselves, and that the direction of these change is more useful still.  (Note that aside from RGB to grayscale conversion, the preprocessing mentioned above was not performed here -- local and global mean and variance scaling are essentially irrelevant when taking local derivatives.)
 
-Using a relatively untuned Support Vector Classifier with RBF kernel over HOG features from MNIST images yielded 72\% accuracy on the test set. The same method over a smaller subset of SVHN yielded only 36\% accuracy! With the SciKit Learn implementation I couldn't finish a run over the full dataset in any reasonable amount of time. For this reason, I only report MNIST results below.
+Using a relatively untuned Support Vector Classifier with RBF kernel over HOG features from MNIST images yielded 73.4\% accuracy on the test set. The same method over a smaller subset of SVHN yielded only 35.3\% accuracy! With the SciKit Learn implementation I couldn't finish a run over the full dataset in any reasonable amount of time. For this reason, I only report MNIST results below.
 
 \section{Deep Learning}
 
 Deep learning with neural networks, in contrast to conventional learning, requires no feature extraction step. One might think this would make things easy, but there are quite a few knobs to turn! I used a variant called a Convolutional Neural Network which uses multiple layers and channels of local convolutions, non-linear activations, and pooling to approximate patch-based features, followed by multiple fully-connected layers to classify based on those features.
 
-With extensive parameter selection, a setup with 2 convolution layers (width 7, depth 32; width 5, depth 64) and 2 fully-connected layers (size 1024; size 10) seemed to work best. I can't stress enough how fragile and difficult this process was -- it took a few hundred runs on big and small datasets to come up with something that works just ok. This particular network configuration seemed to be able to memorize a small training set just fine, so it seemed appropriate to try to scale up with these parameters. However, there are a lot of blanks you have to fill in even after you've gotten that far.
+With extensive parameter selection, a setup with 2 convolution layers (each with width 5, depth 64) and 2 fully-connected layers (size 1024; size 10) seemed to work best. I can't stress enough how fragile and difficult this process was -- it took a few hundred runs on big and small datasets to come up with something that works just ok. This particular network configuration seemed to be able to memorize a small training set just fine, so it seemed appropriate to try to scale up with these parameters. However, there are a lot of blanks you have to fill in even after you've gotten that far.
 
 It only complicates matters that training a neural network is not a speedy process. On real-world datasets it can take days or weeks to train with specialized frameworks and appropriate hardware. Many competitive solutions to common classifications problems process their entire dataset more than 10 or 20 times. I did all this work on a 5 year old laptop, so I had to be smart about trimming work where I could!
 
@@ -110,8 +139,7 @@ In no particular order, here are some relevant pieces of advice I wish I could h
 
 \textbf{Try inverting your images.} I didn't find any references for this, but including inverted copies of images in the same batch increased accuracy quite a bit. The intuition here is that we are trying to learn how to see dark digits on light backgrounds and vice versa, so we want to train our network to classify based on contrast changes of both kinds (increasing or decreasing intensity). Feeding an image and its inverse in the same batch attempts to train these features equally each optimization step.
 
-TODO remove?
-\textbf{Don't regularize convolutional layers.}  (Maybe do, but less strictly.) Do regularize the FC layers, though.
+\textbf{Regularize to learn.} Regularization is a simple and effective way to prevent overfitting. Do it.
 
 \textbf{Train with equal representation.} Choosing the same number of examples for each class in each batch reduced bias a lot.  It's also relevant to remember the exploration/exploitation tradeoff: Alternating sequential and random batches is a good way to ensure you see the whole dataset, reinforce things you've seen, and insulate you from bad dataset orderings.
 
@@ -121,7 +149,7 @@ TODO remove?
 
 \section{Voting}
 
-There is quite a bit of randomness in both the theory and implementation of the deep learning solution.  Practically, I would see results differing by a few percentage points over the same data with different initialization conditions and seeds. A simple technique to reduce this variance was to introduce voting between multiple models: I trained a straight soft-voting ensemble of 10 classifiers (simply averaging the distributions of all ten, then argmaxing to get the predicted class) and saw a final test accuracy several points higher (~5\%) than the average individual validation accuracy.
+There is quite a bit of randomness in both the theory and implementation of the deep learning solution.  Practically, I would see results differing by a few percentage points over the same data with different initialization conditions and seeds. A simple technique to reduce this variance was to introduce voting between multiple models: I trained a straight soft-voting ensemble of 10 classifiers (simply averaging the distributions of all ten, then argmaxing to get the predicted class) and saw a final test accuracy several percent higher than the average individual validation accuracy.
 
 \section{Results}
 
@@ -145,6 +173,13 @@ The most relevant topline metric is probably accuracy on test datasets (shown in
 \csvautotabular{../results/acc_table.csv}
 \caption{Accuracy by model and dataset}
 \label{fig:accuracy}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../logs/tf_mnist/learning_curve.png}
+  \caption{SVHN CNN Learning Curve}
+  \label{fig:svhn_cnn_lc}
 \end{figure}
 
 \section{Conclusion}

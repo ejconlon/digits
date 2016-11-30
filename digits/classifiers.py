@@ -85,7 +85,9 @@ def cnn(dataset, dropout, params, width, height, depth):
   assert num_fc > 0
 
   # TODO pool on the last conv layer?
-  pool_last = False
+  use_lrn = True
+  pool_last = True
+
   if pool_last:
     factor = num_conv
   else:
@@ -123,7 +125,8 @@ def cnn(dataset, dropout, params, width, height, depth):
     acts.append(conv)
     if pool_last or (i < num_conv - 1): # skip pool on last layer
       # TODO use lrn?
-      conv = tf.nn.local_response_normalization(conv)
+      if use_lrn:
+        conv = tf.nn.local_response_normalization(conv)
       conv = tf.nn.max_pool(conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
     last_depth = conv_depth
     conv_weights.append(w)

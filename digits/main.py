@@ -97,7 +97,7 @@ def inspect(env, loader, args):
     print(reader.get_tensor(key))
 
 def write_results(env, model, variant, role, proc, metrics, activations, viz):
-  num_act_examples = 3
+  num_act_examples = 1
   report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)

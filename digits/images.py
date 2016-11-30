@@ -150,10 +150,8 @@ def lcn(img, thresh, gfilt):
   sq_img = np.empty(img.shape, dtype=np.float64)
   scipy.ndimage.filters.convolve(np.square(centered), gfilt, sq_img)
   root = np.sqrt(sq_img)
-  # m = np.mean(root)
-  # TODO(eric) use mean as min bound in addition to thresh?
-  # was max(m, thresh) below
-  np.clip(root, thresh, np.max(root), root)
+  m = np.mean(root)
+  np.clip(root, max(m, thresh), np.max(root), root)
   img = np.divide(centered, root)
   return img
 
