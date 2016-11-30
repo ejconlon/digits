@@ -59,10 +59,10 @@ class Metrics:
     return sklearn.metrics.confusion_matrix(self.gold, self.pred)
 
   def gold_class_dist(self):
-    return np.histogram(self.gold, bins=range(self.num_classes), density=True)[0]
+    return np.histogram(self.gold, bins=self.num_classes, density=True)[0]
 
   def pred_class_dist(self):
-    return np.histogram(self.pred, bins=range(self.num_classes), density=True)[0]
+    return np.histogram(self.pred, bins=self.num_classes, density=True)[0]
 
   def entropy(self):
     e = np.apply_along_axis(scipy.stats.entropy, 1, self.pred_hot)
