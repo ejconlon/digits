@@ -200,12 +200,11 @@ class TFModel(Model):
       for act in acts:
         tf.add_to_collection('activations', act)
 
-      # reg = sum(tf.nn.l2_loss(w) for w in conv_weights) + \
-      #       sum(tf.nn.l2_loss(w) for w in fc_weights)
-
-      # TODO reg conv_weights?
       reg = sum(tf.nn.l2_loss(w) for w in fc_weights) + tf.nn.l2_loss(out_w)
 
+      # TODO regularize conv weights?
+      reg += sum(tf.nn.l2_loss(w) for w in conv_weights)
+      
       loss = tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits, labels)) + params.lam * reg
 
@@ -237,7 +236,6 @@ class TFModel(Model):
       csv_writer.writeheader()
 
       if params.use_rando:
-        # TODO tune rando params
         rando = lambda img: img_rando(img, s=params.rando_scale, r=params.rando_rotation, t=params.rando_translation, i=params.rando_inversion)
       else:
         rando = None

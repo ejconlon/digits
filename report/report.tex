@@ -12,6 +12,7 @@
 \usepackage{listings} % Source code formatting and highlighting
 \usepackage{csquotes}
 \usepackage{svg}
+\usepackage{csvsimple}
 \usepackage[
 backend=biber,
 style=alphabetic,
@@ -109,6 +110,7 @@ In no particular order, here are some relevant pieces of advice I wish I could h
 
 \textbf{Try inverting your images.} I didn't find any references for this, but including inverted copies of images in the same batch increased accuracy quite a bit. The intuition here is that we are trying to learn how to see dark digits on light backgrounds and vice versa, so we want to train our network to classify based on contrast changes of both kinds (increasing or decreasing intensity). Feeding an image and its inverse in the same batch attempts to train these features equally each optimization step.
 
+TODO remove?
 \textbf{Don't regularize convolutional layers.}  (Maybe do, but less strictly.) Do regularize the FC layers, though.
 
 \textbf{Train with equal representation.} Choosing the same number of examples for each class in each batch reduced bias a lot.  It's also relevant to remember the exploration/exploitation tradeoff: Alternating sequential and random batches is a good way to ensure you see the whole dataset, reinforce things you've seen, and insulate you from bad dataset orderings.
@@ -122,6 +124,28 @@ In no particular order, here are some relevant pieces of advice I wish I could h
 There is quite a bit of randomness in both the theory and implementation of the deep learning solution.  Practically, I would see results differing by a few percentage points over the same data with different initialization conditions and seeds. A simple technique to reduce this variance was to introduce voting between multiple models: I trained a straight soft-voting ensemble of 10 classifiers (simply averaging the distributions of all ten, then argmaxing to get the predicted class) and saw a final test accuracy several points higher (~5\%) than the average individual validation accuracy.
 
 \section{Results}
+
+For every model and dataset, the following are calculated and written to disk:
+
+\begin{itemize}
+  \item Accuracy
+  \item Per-class precision, recall, and F1
+  \item Gold and predicted class distributions
+  \item Confusion matrix
+  \item Most and least certain examples (by entropy)
+  \item Convolution weights
+  \item Convolution activations for selected examples
+  \item Learning curve (loss and accuracy over time)
+\end{itemize}
+
+The most relevant topline metric is probably accuracy on test datasets (shown in Figure \ref{fig:accuracy}). Take this data with a grain of salt -- as mentioned above, I've traded some accuracy for speed!
+
+\begin{figure}[htbp]
+\centering
+\csvautotabular{../results/acc_table.csv}
+\caption{Accuracy by model and dataset}
+\label{fig:accuracy}
+\end{figure}
 
 \section{Conclusion}
 

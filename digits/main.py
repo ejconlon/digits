@@ -97,6 +97,7 @@ def inspect(env, loader, args):
     print(reader.get_tensor(key))
 
 def write_results(env, model, variant, role, proc, metrics, activations, viz):
+  num_act_examples = 3
   report_file = env.resolve_role_file(model, variant, role, 'report.json', clean=True)
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle', clean=True)
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle', clean=True)
@@ -123,14 +124,16 @@ def write_results(env, model, variant, role, proc, metrics, activations, viz):
     viz_dict = e.viz._asdict()
     for target in ['correct_certain', 'wrong_certain', 'correct_uncertain', 'wrong_uncertain']:
       out_file = env.resolve_role_file(model, variant, role, target + '_images.png', clean=True)
-      out_file2 = env.resolve_role_file(model, variant, role, target + '_activations.png', clean=True)
       # The to_dict in the lambda here is to get around pandas indexing with python 2
       # that expects one dimensional array cells
-      plot_images(viz_dict[target], lambda r: '%d not %d (%.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.to_dict()['proc_image'], dest=out_file)
+      plot_images(viz_dict[target], lambda r: '(%d, %d, %.2f)' % (r.gold_class, r.pred_class, r.p), lambda r: r.to_dict()['proc_image'], dest=out_file)
       if len(activations[target]) > 0:
         f = activations[target]
-        x = f[(f.layer == 0) & (f.image == 0)]
-        plot_images(x, lambda r: None, lambda r: r.to_dict()['activations'], dest=out_file2)
+        for i in range(num_act_examples):
+          act_img_out = env.resolve_role_file(model, variant, role, target + '_activations_' + str(i) + '.png', clean=True)
+          x = f[(f.layer == 0) & (f.image == i)]
+          if len(x) > 0:
+            plot_images(x, lambda r: None, lambda r: r.to_dict()['activations'], dest=act_img_out)
 
 def write_params(env, model, variant, params):
   params_file = env.resolve_model_file(model, variant, 'params.json', clean=True)
