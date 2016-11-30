@@ -81,7 +81,7 @@ Jarrett et al \cite{jarrett2009best} describe the Local Contrast Normalization s
 
 For smaller datasets, augmentation with small coordinate transformations (scaling, translation, and rotation) of data in the preprocessed training set helped to reduce overfitting and improve accuracy. This was useful for MNIST in particular since the digits were so well cropped and centered that these perturbations looked quite reasonable. The SVHN dataset was not as well cropped, and moreover there was plenty of training data, so it did not benefit from this augmentation.
 
-\section{Conventional Solution}
+\section{Conventional Learning}
 
 Conventional learning requires that we extract relevant features from our dataset before learning. Sometimes this extraction can be minimal preprocessing (one-hotting, projecting, or rescaling) and sometimes it can be more extensive, especially in higher dimensional datasets. In the case of MNIST and SVHN, we are looking at 784- and 3072-dimensional input spaces, respectively. Even if we were to amass enough data to make learning that size space tractable, we might still suspect that there were more relevant lower-dimensional representations.
 
@@ -89,7 +89,7 @@ One such representation uses Histogram of Oriented Gradients (HOG) as the featur
 
 Using a relatively untuned Support Vector Classifier with RBF kernel over HOG features from MNIST images yielded 72\% accuracy on the test set. The same method over a smaller subset of SVHN yielded only 36\% accuracy! With the SciKit Learn implementation I couldn't finish a run over the full dataset in any reasonable amount of time. For this reason, I only report MNIST results below.
 
-\section{Deep Learning Solution}
+\section{Deep Learning}
 
 Deep learning with neural networks, in contrast to conventional learning, requires no feature extraction step. One might think this would make things easy, but there are quite a few knobs to turn! I used a variant called a Convolutional Neural Network which uses multiple layers and channels of local convolutions, non-linear activations, and pooling to approximate patch-based features, followed by multiple fully-connected layers to classify based on those features.
 
