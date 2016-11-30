@@ -82,4 +82,7 @@ report-gen: report-clean
 report-preview: report-gen
 	cd report && open report.pdf
 
+report-release: report-gen
+	cp report/report.pdf ejconlon_deep_svhn.pdf
+
 all: test-verbose results-gen

@@ -6,7 +6,7 @@ data/
 pickled/
 results/
 logs/
-*.pdf
+report/*.pdf
 *.pyc
 *.swo
 *.swp

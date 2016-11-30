@@ -3,7 +3,7 @@ digits
 
 a.k.a. "Classifying Street View House Numbers with Deep Learning"
 
-Read `report/report.pdf` for an explanation of some simple approaches to classification of SVHN and MNIST datasets with both conventional and deep learning methods.
+Read `ejconlon_deep_svhn.pdf` for an explanation of some simple approaches to classification of SVHN and MNIST datasets with both conventional and deep learning methods.
 
 Building and running
 --------------------
