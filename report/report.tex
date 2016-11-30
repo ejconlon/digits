@@ -67,6 +67,22 @@ The application follows a standard machine learning pipeline model. See Figure \
   \label{fig:pipeline}
 \end{figure}
 
+\section{Preprocessing and Augmentation}
+
+Minimal preprocessing was required for MNIST. Digits came centered and isolated in images, and all pixel values were quantized to 0 or 1. SVHN, on the other hand, required extensive work. The processing steps for each cropped digit image were
+
+\begin{enumerate}
+  \item Convert to grayscale (to reduce dimensionality)
+  \item Crop on the left and right (4 pixels) to reduce distraction
+  \item Center on the mean
+  \item Perform Global Contrast Normalization (variance scaling over whole image)
+  \item Perform Local Contrast Normalization (variance scaling over patches)
+\end{enumerate}
+
+Jarrett et al \cite{jarrett2009best} describe the Local Contrast Normalization step, which is more or less a thresholded, Gaussian-weighted variance scaling around each pixel. The results of this preprocessing can be seen in figures to follow. Numpy \cite{van2011numpy}, SciPy \cite{scipy}, and SciKit Image \cite{van2014scikit} were quite helpful in these processing operations.
+
+For smaller datasets, augmentation with small coordinate transformations (scaling, translation, and rotation) of data in the preprocessed training set helped to reduce overfitting and improve accuracy. This was useful for MNIST in particular since the digits were so well cropped and centered that these perturbations looked quite reasonable. The SVHN dataset was not as well cropped, and moreover there was plenty of training data, so it did not benefit from this augmentation.
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{../results/mnist_orig.png}
@@ -95,29 +111,27 @@ The application follows a standard machine learning pipeline model. See Figure \
   \label{fig:crop_proc}
 \end{figure}
 
-\section{Preprocessing and Augmentation}
-
-Minimal preprocessing was required for MNIST. Digits came centered and isolated in images, and all pixel values were quantized to 0 or 1. SVHN, on the other hand, required extensive work. The processing steps for each cropped digit image were
-
-\begin{enumerate}
-  \item Convert to grayscale (to reduce dimensionality)
-  \item Crop on the left and right (4 pixels) to reduce distraction
-  \item Center on the mean
-  \item Perform Global Contrast Normalization (variance scaling over whole image)
-  \item Perform Local Contrast Normalization (variance scaling over patches)
-\end{enumerate}
-
-Jarrett et al \cite{jarrett2009best} describe the Local Contrast Normalization step, which is more or less a thresholded, Gaussian-weighted variance scaling around each pixel. The results of this preprocessing can be seen in figures to follow. Numpy \cite{van2011numpy}, SciPy \cite{scipy}, and SciKit Image \cite{van2014scikit} were quite helpful in these processing operations.
-
-For smaller datasets, augmentation with small coordinate transformations (scaling, translation, and rotation) of data in the preprocessed training set helped to reduce overfitting and improve accuracy. This was useful for MNIST in particular since the digits were so well cropped and centered that these perturbations looked quite reasonable. The SVHN dataset was not as well cropped, and moreover there was plenty of training data, so it did not benefit from this augmentation.
-
 \section{Conventional Learning}
 
 Conventional learning requires that we extract relevant features from our dataset before learning. Sometimes this extraction can be minimal preprocessing (one-hotting, projecting, or rescaling) and sometimes it can be more extensive, especially in higher dimensional datasets. In the case of MNIST and SVHN, we are looking at 784- and 3072-dimensional input spaces, respectively. Even if we were to amass enough data to make learning that size space tractable, we might still suspect that there were more relevant lower-dimensional representations.
 
 One such representation uses Histogram of Oriented Gradients (HOG) as the feature space \cite{netzer2011reading}.  HOG first calculates approximate gradients in both directions for each pixel in the image, then yields a gradient that is the weighted mode of those gradients in a neighborhood around each pixel. The intuition is that changes in value between pixels are more relevant than the pixel values themselves, and that the direction of these change is more useful still.  (Note that aside from RGB to grayscale conversion, the preprocessing mentioned above was not performed here -- local and global mean and variance scaling are essentially irrelevant when taking local derivatives.)
 
-Using a relatively untuned Support Vector Classifier with RBF kernel over HOG features from MNIST images yielded 73.4\% accuracy on the test set. The same method over a smaller subset of SVHN yielded only 35.3\% accuracy! With the SciKit Learn implementation I couldn't finish a run over the full dataset in any reasonable amount of time. For this reason, I only report MNIST results below.
+Using a relatively untuned Support Vector Classifier with RBF kernel over HOG features from MNIST images yielded 73.4\% accuracy on the test set. The same method over a smaller subset of SVHN yielded only 35.3\% accuracy! With the SciKit Learn implementation I couldn't finish a run over the full dataset in any reasonable amount of time, so don't take this result too seriously.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/mnist_hog.png}
+  \caption{MNIST HOG}
+  \label{fig:mnist_hog}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../results/crop_hog.png}
+  \caption{SVHN HOG}
+  \label{fig:svhn_hog}
+\end{figure}
 
 \section{Deep Learning}
 
@@ -166,7 +180,7 @@ For every model and dataset, the following are calculated and written to disk:
   \item Learning curve (loss and accuracy over time)
 \end{itemize}
 
-The most relevant topline metric is probably accuracy on test datasets (shown in Figure \ref{fig:accuracy}). Take this data with a grain of salt -- as mentioned above, I've traded some accuracy for speed!
+The most relevant topline metric is probably accuracy on test datasets (shown in Figure \ref{fig:accuracy}). Take this data with a grain of salt -- as mentioned above, I've traded some accuracy for speed! For an idea of the relative complexity of some of these, it takes about 5 minutes to train a single CNN on MNIST to the given accuracy, and it takes around 10 times that amount of time to train a single CNN on SVHN.
 
 \begin{figure}[htbp]
 \centering
@@ -177,12 +191,35 @@ The most relevant topline metric is probably accuracy on test datasets (shown in
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\textwidth]{../logs/tf_mnist/learning_curve.png}
-  \caption{SVHN CNN Learning Curve}
+  \includegraphics[width=\textwidth]{../logs/tf_crop-huge/learning_curve.png}
+  \caption{SVHN CNN learning curve}
   \label{fig:svhn_cnn_lc}
 \end{figure}
 
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../logs/tf_crop-huge/test/correct_uncertain_images.png}
+  \caption{SVHN CNN least certain correct preditions}
+  \label{fig:svhn_cnn_correct_uncertain_images}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../logs/tf_crop-huge/test/wrong_uncertain_images.png}
+  \caption{SVHN CNN least certain incorrect preditions}
+  \label{fig:svhn_cnn_wrong_uncertain_images}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{../logs/tf_crop-huge/weights_0.png}
+  \caption{SVHN CNN first convolution layer weights}
+  \label{fig:svhn_cnn_weights}
+\end{figure}
+
 \section{Conclusion}
+
+In short: Deep learning is not a panacea!
 
 \printbibliography[heading=bibintoc,title={References}]
 

@@ -19,6 +19,13 @@ def gray(data):
   X = X.reshape((X.shape[0], X.shape[1], X.shape[2], 1))
   return data._replace(X=X)
 
+def gray2d(data):
+  X = data.X
+  X = rgb2gray(X)
+  X = X.astype(np.float32)
+  X = X.reshape((X.shape[0], X.shape[1], X.shape[2]))
+  return data._replace(X=X)
+
 def color(data):
   X = img_prepare_all(data.X)
   return data._replace(X=X)
@@ -33,6 +40,7 @@ PREPROCESSORS = {
     'noop': lambda data: data,
     'flat-gray': flat_gray,
     'gray': gray,
+    'gray-2d': gray2d,
     'color': color,
     'hog': hog
 }
