@@ -1,3 +1,7 @@
+"""
+Tests for data loading and processing.
+"""
+
 import sys
 for p in ['.']:
   if p not in sys.path:
@@ -36,19 +40,6 @@ def test_load_test():
   assert ys == yr
   yo = data.y[42 + ri]
   assert yo == yr
-
-# def test_load_raw():
-#   name = 'foo_bar_baz'
-#   if loader.raw_exists(name):
-#     loader.del_raw(name)
-#   assert not loader.raw_exists(name)
-#   raw = {'a': 1, 'b': 2}
-#   loader.write_raw(name, raw)
-#   assert loader.raw_exists(name)
-#   raw_again = loader.read_raw(name)
-#   assert raw_again == raw
-#   loader.del_raw(name)
-#   assert not loader.raw_exists(name)
 
 def test_hot():
   num_classes = 5

@@ -28,6 +28,10 @@ DEFAULT_TRANSLATION=1.1
 DEFAULT_INVERSION=0.0
 
 def img_width(arr):
+  """
+  Args: arr (ndarray) an image or array of images
+  Returns: (int) width of an individual image
+  """
   if is_single_img(arr):
     i = 0
   else:
@@ -35,6 +39,10 @@ def img_width(arr):
   return arr.shape[i]
 
 def img_height(arr):
+  """
+  Args: arr (ndarray) an image or array of images
+  Returns: (int) height of an individual image
+  """
   if is_single_img(arr):
     i = 1
   else:
@@ -42,6 +50,10 @@ def img_height(arr):
   return arr.shape[i]
 
 def img_depth(arr):
+  """
+  Args: arr (ndarray) an image or array of images
+  Returns: (int) depth of an individual image
+  """
   if len(arr.shape) == 2:
     return 1
   else:
@@ -56,13 +68,25 @@ def img_depth(arr):
     else:
       return 1
 
-# is the array a single image or multiple?
 def is_single_img(arr):
+  """
+  Args: arr (ndarray) an image or array of images
+  Returns: (bool) is the array a single image or multiple?
+  """
   return len(arr.shape) == 2 or \
     (len(arr.shape) == 3 and (arr.shape[2] == 1 or arr.shape[2] == 3))
 
-# apply a function intelligently to an image or array of images
 def img_map(f, arr):
+  """
+  Apply a function intelligently to an image or array of images
+
+  Args:
+    f (function[ndarray, ndarray]): image mutator
+    arr (ndarray): an image or array of images
+
+  Returns:
+    (ndarray) mutated image or array of images
+  """
   if is_single_img(arr):
     return f(arr)
   else:
@@ -79,6 +103,16 @@ def img_map(f, arr):
     return v
 
 def img_map_id(f, arr):
+  """
+  Apply a function intelligently to an image or array of images.
+
+  Args:
+    f (function[(ndarray, ndarray), unit]): image mutator
+    arr (ndarray): an image or array of images
+
+  Returns:
+    (ndarray) mutated image or array of images
+  """
   v0 = f(arr[0])
   out = np.empty(arr.shape, dtype=v0.dtype)
   for i in range(arr.shape[0]):
@@ -87,8 +121,14 @@ def img_map_id(f, arr):
     f(arr[i], out[i])
   return out
 
-# apply a function for side effects
 def img_effect(f, arr):
+  """
+  Applies a funtion for side effects.
+
+  Args:
+    f (function[ndarray, unit]): image mutator
+    arr (ndarray): an image or array of images
+  """
   if is_single_img(arr):
     f(arr)
   else:
@@ -96,24 +136,29 @@ def img_effect(f, arr):
       f(arr[i])
 
 def img_flatten(arr):
-  assert len(arr.shape) == 4
-  return arr.reshape((arr.shape[0], product(arr.shape[1:])))
-
-def img_flatten(arr):
+  """
+  Args: arr (ndarray): array of images
+  Returns: (ndarray): array of flattened images
+  """
   width = img_width(arr)
   depth = img_depth(arr)
   volume = width * width * depth
   return (arr.reshape((-1, volume)), width, depth)
 
-def img_unflatten(arr, width, depth):
-  if depth == 1:
-    return arr.reshape((-1, width, width))
-  else:
-    assert depth == 3
-    return arr.reshape((-1, width, width, depth))
-
-# apply a random transformation to an image
 def img_rando(img, s=DEFAULT_SCALE, r=DEFAULT_ROTATION, t=DEFAULT_TRANSLATION, i=DEFAULT_INVERSION):
+  """
+  Applies a random transformation to an image.
+
+  Args:
+    img (ndarray) an image
+    s (float, optional) scale factor (1 is identity)
+    r (float, optional) rotation factor (0 is identity)
+    t (float, optional) translation factor (0 is identity)
+    i (fload, optional) inversion factor (0 is identity)
+
+  Returns:
+    (ndarray) mutated image
+  """
   scale = random.uniform(1/s, s)
   rot = random.uniform(-r, r)
   trans = (random.uniform(-t, t), random.uniform(-t, t))
@@ -123,21 +168,22 @@ def img_rando(img, s=DEFAULT_SCALE, r=DEFAULT_ROTATION, t=DEFAULT_TRANSLATION, i
     warped = -1.0 * warped
   return warped
 
-def img_contrast(img, out, selem, p):
-  return skimage.filters.rank.enhance_contrast_percentile(img, out=out, selem=selem, p0=p, p1=1.0-p)
-
-def img_gray_contrast_all(arr):
-  p = 0.2
-  k = 3
-  selem = skimage.morphology.square(k)  
-  with warnings.catch_warnings():
-    warnings.simplefilter("ignore")
-    return img_map_id(lambda img, out: img_contrast(img, out, selem, p), arr)
-
 # These 3 (gauss + gaussian_filter + lcn) are adapted from pylearn2 lecun_lcn
+# originally theano functions, but here they're pulled out and simplified
+# to be preprocessors (so we can serialize results for quick re-use).
+# The original code can be found:
 # http://deeplearning.net/software/pylearn2/
-# See also http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf
+# The LCN algorithm itself is described here:
+# http://yann.lecun.com/exdb/publis/pdf/jarrett-iccv-09.pdf
+
 def gaussian_filter(k, sigma):
+  """
+  Args:
+    k (int): kernel size (in pixels)
+    sigma (float): kernel width (stdev)
+  Returns:
+    (ndarray) (k,k) patch representing a normalized gaussian
+  """
   x = np.zeros((k, k), dtype=np.float64)
   mid = k // 2
   for i in range(k):
@@ -146,10 +192,29 @@ def gaussian_filter(k, sigma):
   return x / np.sum(x)
 
 def gauss(x, y, sigma):
+  """
+  Args:
+    x (int): x distance
+    y (int): y distance
+    sigma (float): stdev
+  Returns:
+    (float) 2D Gaussian value
+  """
   Z = 2 * np.pi * sigma ** 2
   return  1. / Z * np.exp(-(x ** 2 + y ** 2) / (2. * sigma ** 2))
 
 def lcn(img, thresh, gfilt):
+  """
+  Local Contrast Normalization. See note above.
+
+  Args:
+    img (ndarray): an image
+    thresh (float): denominator threshold
+    gfilt (ndarray): gaussian filter
+
+  Returns:
+    (ndarray) the normalized image
+  """
   avg_img = np.empty(img.shape, dtype=np.float64)
   scipy.ndimage.filters.convolve(img, gfilt, avg_img)
   centered = img - avg_img
@@ -162,13 +227,32 @@ def lcn(img, thresh, gfilt):
   return img
 
 def gcn(img, thresh):
+  """
+  Global Contrast Normalization. (Mean and variance scaling.)
+
+  Args:
+    img (ndarray): an image
+    thresh (float): denominator threshold
+
+  Returns:
+    (ndarray) the normalized image
+  """
   mean = np.mean(img, dtype=np.float64)
   std = max(np.std(img, dtype=np.float64, ddof=1), thresh)
   return (img - mean) / std
 
-# Adapted from pylearn2 lecun_lcn
-# http://deeplearning.net/software/pylearn2/
 def img_color_contrast_all(arr, use_gcn, use_lcn):
+  """
+  Processes an image: crops, converts, and normalizes contrast.
+
+  Args:
+    arr (ndarray): an image
+    use_gcn (bool): use GCN
+    use_lcn (bool): use LCN
+
+  Returns:
+    (ndarray) the processed image
+  """
   k = 7
   sigma = 3.0
   thresh = 1e-4
@@ -190,6 +274,17 @@ def img_color_contrast_all(arr, use_gcn, use_lcn):
   return img_map(fn, arr)
 
 def img_prepare_all(arr, use_gcn=True, use_lcn=True):
+  """
+  Prepare all images in the array.
+
+  Args:
+    arr (ndarray): an array of images
+    use_gcn (bool, optional): use GCN
+    use_lcn (bool, optional): use LCN
+
+  Returns:
+    (ndarray) the array of processed images
+  """
   if len(arr.shape) == 3:
     # gray (mnist)
     arr = skimage.img_as_float(arr)
@@ -204,7 +299,28 @@ def img_prepare_all(arr, use_gcn=True, use_lcn=True):
   assert len(arr.shape) == 4
   return arr
 
-def img_select(X, y, y_inv, batch_size, augment=None, invert=False, step=None, half_rando=True, all_rando=False):
+def img_select(X, y, y_inv, batch_size, augment=None, invert=False,
+               step=None, half_rando=True, all_rando=False):
+  """
+  Select a batch of images from the dataset.
+
+  Args:
+    X (ndarray) array of data
+    y (ndarray) array of labels
+    y_inv (list[ndarray]) reverse label-to-index map
+    batch_size (int) number of elements to select
+    augment (function[ndarray, ndarray], optional) function to mutate selected elements
+    invert (bool, optional) if true, also include inverted elements in selection
+    step (int, optional) current global step to index data
+    half_rando (bool, optional) if true, mix in deterministic selection by step
+    all_rando (bool, optional) if true, only do random selection
+
+  Returns:
+    (tuple) of
+      Xb (ndarray) selected data
+      yb (ndarray) selected labels
+      Xi (ndarray) reverse index-to-index lookup (Xb to X)
+  """
   assert X.shape[0] == y.shape[0]
   num_classes = len(y_inv)
   per_class = batch_size // num_classes

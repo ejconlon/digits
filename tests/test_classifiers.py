@@ -1,3 +1,8 @@
+"""
+Tests for each type of classifier.
+If these execute successfully, `make train` will too.
+"""
+
 import sys
 for p in ['.']:
   if p not in sys.path:
@@ -16,20 +21,7 @@ env.assert_ready()
 loader = Loader.from_env(env)
 loader.assert_ready()
 
-# random_state = random.randint(0, 1000)
 random_state = 71
-
-# SLOW!
-# def test_baseline_mnist():
-#   args = Namespace(
-#     op='drive',
-#     model='baseline',
-#     variant='mnist',
-#     random_state=random_state,
-#     train=True,
-#     max_acc=None
-#   )
-#   sub_main(env, loader, args)
 
 def test_baseline_crop():
   args = Namespace(

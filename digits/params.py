@@ -1,8 +1,14 @@
+"""
+Model parameters, search options, and experiment configurations.
+"""
+
 from argparse import Namespace
 
 from .images import DEFAULT_SCALE, DEFAULT_TRANSLATION, DEFAULT_ROTATION, DEFAULT_INVERSION
 
+# PARAMS[model][param_set] returs a bag of parameters
 PARAMS = {
+  # baseline doesn't have much to configure
   'baseline': {
     'mnist': Namespace(
       num_classes = 10
@@ -14,7 +20,7 @@ PARAMS = {
   'tf': {
     'mnist': Namespace(
       num_classes = 10,
-      # regularization param 0.0001 for mnist, 0.00000001 for crop?
+      # regularization param
       lam = 1e-4,
       # learning rate
       alpha = 0.001,
@@ -24,7 +30,7 @@ PARAMS = {
       decay_step = 350,
       # number of display steps to break if validation doesn't improve
       break_display_step = 10,
-      # TODO 150k for mnist
+      # max samples to see
       training_iters = 150000,  
       # number of examples per descent
       batch_size = 100,
@@ -40,11 +46,13 @@ PARAMS = {
       fcs = [1024],
       # randomize image rotation, etc
       use_rando = True,
+      # randomization parameters
       rando_scale = DEFAULT_SCALE,
       rando_translation = DEFAULT_TRANSLATION,
       rando_rotation = DEFAULT_ROTATION,
       rando_inversion = DEFAULT_INVERSION,
-      invert=False
+      # include inverted images in selections
+      invert = False
     ),
     'crop': Namespace(
       num_classes = 10,
@@ -70,8 +78,10 @@ PARAMS = {
   }
 }
 
+# Voting classifiers use CNN params as they are ensembles of CNNs.
 PARAMS['vote'] = PARAMS['tf']
 
+# SEARCH[model][search_set] returns a parameter search space.
 SEARCH = {
   'tf': {
     'mnist': Namespace(
@@ -107,6 +117,9 @@ SEARCH = {
 }
 
 def find_search_size(model, search_set):
+  """
+  Returns: (int) the size of the search set.
+  """
   s = SEARCH[model][search_set]
   if type(s) == list:
     return len(s)
@@ -114,9 +127,14 @@ def find_search_size(model, search_set):
     raise Exception('Search set not a list: ' + model + ' / ' + search_set)
 
 def has_search_size(model, search_set):
+  """
+  Returns: (bool) is the search set sequential (return true) or random (false)?
+  """
   s = SEARCH[model][search_set]
   return type(s) == list
 
+# CONFIGS contains options that will be used to 'drive' experiments.
+# e.g. which model, which data, which preprocessor, which params...
 CONFIGS = [
   Namespace(
     model='baseline',
@@ -247,6 +265,9 @@ CONFIGS = [
 ]
 
 def assert_no_dupes():
+  """
+  Sanity check that CONFIGS is unique by (model, variant)
+  """
   s = set()
   for c in CONFIGS:
     k = (c.model, c.variant)
