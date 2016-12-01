@@ -1,3 +1,7 @@
+"""
+Utilities for exploring results graphically.
+"""
+
 from base64 import b64encode
 from collections import namedtuple
 from io import BytesIO, StringIO
@@ -19,17 +23,27 @@ import skimage.exposure
 from .metrics import read_report, unpickle_from
 from .images import img_effect
 
+# A tuple of all relevant results -- all optional
 Explorer = namedtuple('Explorer', [
-  'report',
-  'metrics',
-  'viz',
-  'learning_curve',
-  'params',
-  'conv_weights',
-  'activations'
+  'report',         # (Report) report (accuracy, ...)
+  'metrics',        # (Metrics) metrics (predictions, ...)
+  'viz',            # (dict[str, DataFrame]) viz by type (correct_certain, ...)
+  'learning_curve', # (DataFrame) learning curve
+  'params',         # (Namespace) bag of parameters
+  'conv_weights',   # (list[ndarray]) conv weights by depth
+  'activations'     # (dict[str, list[ndarray]]) activations by type
 ])
 
 def plot_weights(weight_frame, layer, show=False, dest=None):
+  """
+  Plot convolution weights of the given depth.
+
+  Args:
+    weight_frame (DataFrame): convolution weights
+    layer (int): convolution depth to plot
+    show (bool, optional): show live plot
+    dest (str, optional): write to file
+  """
   assert show or dest is not None
   plt.close()
 
@@ -55,6 +69,14 @@ def plot_weights(weight_frame, layer, show=False, dest=None):
     plt.savefig(dest, bbox_inches='tight')
 
 def plot_learning(curve, show=False, dest=None):
+  """
+  Plot learning curve
+
+  Args:
+    curve (DataFrame): learning curve
+    show (bool, optional): show live plot
+    dest (str, optional): write to file
+  """
   assert show or dest is not None
   plt.close()
 
@@ -83,6 +105,19 @@ def plot_learning(curve, show=False, dest=None):
     plt.savefig(dest, bbox_inches='tight')
 
 def explore(env, model, variant, role, assert_complete=False):
+  """
+  Load all relevant results from the filesystem for the given model.
+
+  Args:
+    env (Env): the local filesystem environment
+    model (str): model identifier (one of baseline, tf, vote)
+    variant (str): unique identifier
+    role (str): one of (train, valid, test)
+    assert_complete (bool, optional): if true, assert that all results exist
+
+  Returns:
+    (Explore) all results (that exist) bundled up
+  """
   report_file = env.resolve_role_file(model, variant, role, 'report.json')
   metrics_file = env.resolve_role_file(model, variant, role, 'metrics.pickle')
   viz_file = env.resolve_role_file(model, variant, role, 'viz.pickle')
@@ -127,16 +162,34 @@ def explore(env, model, variant, role, assert_complete=False):
     if model == 'tf':
       assert learning_curve is not None
       assert conv_weights is not None
-      # TODO enable
-      #assert activations is not None
+      assert activations is not None
   return Explorer(report, metrics, viz, learning_curve, params, conv_weights, activations)
 
-# show image or array of them in ipython
 def img_show(arr):
+  """
+  Show an image or an array of them in IPython
+
+  Args:
+    arr (ndarray) image or array of images
+
+  Returns:
+    IPython display object
+  """
   img_effect(lambda x: display(HTML(img_tag(x))), arr)  
 
-# make gray images look gray to matplotlib by removing the dummy depth dim
 def img_fudge(img):
+  """
+  Makes gray images look gray to matplotlib by removing the dummy depth dim.
+  Does nothing to color images.
+
+  Args:
+    img (ndarray) an image
+
+  Returns:
+    (tuple) of
+      img (ndarray) an image matplotlib will like
+      is_gray (bool) is this image gray?
+  """
   if len(img.shape) == 2:
     return (img, True)
   elif len(img.shape) == 3 and img.shape[2] == 1:
@@ -145,6 +198,15 @@ def img_fudge(img):
     return (img, False)
 
 def img_obj(arr):
+  """
+  Turns an array-based image into a PIL-based image.
+
+  Args:
+    arr (ndarray): an image
+
+  Returns:
+    (Image) the PIL representation
+  """
   if arr.dtype != np.uint8:
     with warnings.catch_warnings():
       warnings.simplefilter("ignore")
@@ -164,14 +226,31 @@ def img_obj(arr):
     raise Exception('Invalid shape', arr.shape)
   return Image.fromarray(arr, mode)
 
-# Given a single image, return a tag
 def img_tag(arr):
+  """
+  Given a single image, return an HTML tag renderable in IPython
+
+  Args:
+    arr (ndarray) an image
+
+  Returns:
+    (str) HTML image tag
+  """
   img = img_obj(arr)
   out = BytesIO()
   img.save(out, format='png')
   return "<img src='data:image/png;base64,{0}'/>".format(b64encode(out.getvalue()).decode('utf-8'))
 
 def viz_table(tab):
+  """
+  Show a DataFrame as an HTML table (with sensible coercions).
+
+  Args:
+    tab (DataFrame) any dataframe
+
+  Returns:
+    (str) HTML rendering that dataframe as a table
+  """
   # need to disable truncation for this function because it will chop image tags :(
   old_width = pd.get_option('display.max_colwidth')
   pd.set_option('display.max_colwidth', -1)
@@ -185,6 +264,18 @@ def viz_table(tab):
   return buf.getvalue()
 
 def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=None):
+  """
+  Plot images from a DataFrame.
+
+  Args:
+    frame (DataFrame): a frame with an image column
+    titler (function[row, option[str]]) a function to extract titles from rows
+    imager (function[row, ndarray]) a function to extract images from rows
+    rows (int, optional) number of visual rows to arrange
+    cols (int, optional) number of visual cols to arrange
+    show (bool, optional): show live plot
+    dest (str, optional): write to file
+  """
   assert show or dest is not None
   plt.close()
 
@@ -223,6 +314,16 @@ def plot_images(frame, titler, imager, rows=None, cols=None, show=False, dest=No
     plt.savefig(dest, bbox_inches='tight')
 
 def plot_images_array(arr, rows=None, cols=None, show=False, dest=None):
+  """
+  Plot images from an array.
+
+  Args:
+    arr (ndarray): array of images
+    rows (int, optional) number of visual rows to arrange
+    cols (int, optional) number of visual cols to arrange
+    show (bool, optional): show live plot
+    dest (str, optional): write to file
+  """
   assert show or dest is not None
   plt.close()
 

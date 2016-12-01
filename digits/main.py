@@ -1,3 +1,13 @@
+"""
+Entry point for digits via the command line.
+
+DON'T READ THIS FILE. It's a pile of hacks just to get the pipeline together.
+
+INSTEAD: Run it with `python -m digits.main -h` and poke around the command line options.
+
+OR: Run it with `make run ARGS="-h"`
+"""
+
 import argparse
 import csv
 import gc
@@ -37,59 +47,58 @@ from .explore import explore, plot_learning, plot_weights, plot_images, plot_ima
 def make_parser():
   parser = argparse.ArgumentParser()
   subparsers = parser.add_subparsers(dest='op')
-  inspect_parser = subparsers.add_parser('inspect')
-  inspect_parser.add_argument('--model', required=True)
-  inspect_parser.add_argument('--variant')
-  train_parser = subparsers.add_parser('train')
-  train_parser.add_argument('--model', required=True)
-  train_parser.add_argument('--variant')
-  train_parser.add_argument('--train-data', required=True)
-  train_parser.add_argument('--valid-data')
-  train_parser.add_argument('--test-data')
-  train_parser.add_argument('--preprocessor')
-  train_parser.add_argument('--param-set', required=True)
-  train_parser.add_argument('--search-set')
-  train_parser.add_argument('--search-size', type=int)
-  train_parser.add_argument('--search-default', type=bool, default=True)
-  train_parser.add_argument('--max-acc', type=float)
-  train_parser.add_argument('--random-state', type=int)
-  test_parser = subparsers.add_parser('test')
-  test_parser.add_argument('--model', required=True)
-  test_parser.add_argument('--variant')
-  test_parser.add_argument('--test-data', required=True)
-  test_parser.add_argument('--preprocessor')
-  test_parser.add_argument('--param-set', required=True)
-  test_parser.add_argument('--random-state', type=int)
-  drive_parser = subparsers.add_parser('drive')
-  drive_parser.add_argument('--model', required=True)
-  drive_parser.add_argument('--variant')
-  drive_parser.add_argument('--random-state', type=int)
+  inspect_parser = subparsers.add_parser('inspect', help='dump tensorflow parameters for a trained model')
+  inspect_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  inspect_parser.add_argument('--variant', help='unique identifier')
+  train_parser = subparsers.add_parser('train', help='train a model')
+  train_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  train_parser.add_argument('--variant', help='unique identifier')
+  train_parser.add_argument('--train-data', required=True, help='dataset identifier (mnist-train, crop-small-test, etc)')
+  train_parser.add_argument('--valid-data', help='dataset identifier (mnist-train, crop-small-test, etc)')
+  train_parser.add_argument('--test-data', help='dataset identifier (mnist-train, crop-small-test, etc)')
+  train_parser.add_argument('--preprocessor', help='data preprocessor (noop, gray, color, hog, etc)')
+  train_parser.add_argument('--param-set', required=True, help='parameter set identifier (mnist, crop, etc)')
+  train_parser.add_argument('--search-set', help='search set identifier')
+  train_parser.add_argument('--search-size', type=int, help='number of search iterations')
+  train_parser.add_argument('--search-default', type=bool, default=True, help='try default params?')
+  train_parser.add_argument('--max-acc', type=float, help='break early acc limit')
+  train_parser.add_argument('--random-state', type=int, help='seed for data randomization')
+  test_parser = subparsers.add_parser('test', help='test a trained model')
+  test_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  test_parser.add_argument('--variant', help='unique identifier')
+  test_parser.add_argument('--test-data', required=True, help='dataset identifier (mnist-train, crop-small-test, etc)')
+  test_parser.add_argument('--preprocessor', help='data preprocessor (noop, gray, color, hog, etc)')
+  test_parser.add_argument('--param-set', required=True, help='parameter set identifier (mnist, crop, etc)')
+  test_parser.add_argument('--random-state', type=int, help='seed for data randomization')
+  drive_parser = subparsers.add_parser('drive', help='run a specific config')
+  drive_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  drive_parser.add_argument('--variant', help='unique identifier')
+  drive_parser.add_argument('--random-state', type=int, help='seed for data randomization')
   drive_train_parser = drive_parser.add_mutually_exclusive_group(required=False)
-  drive_train_parser.add_argument('--train', dest='train', action='store_true')
-  drive_train_parser.add_argument('--no-train', dest='train', action='store_false')
+  drive_train_parser.add_argument('--train', dest='train', action='store_true', help='train first')
+  drive_train_parser.add_argument('--no-train', dest='train', action='store_false', help='skip training')
   drive_parser.set_defaults(train=True)
-  drive_parser.add_argument('--max-acc', type=float)
-  report_parser = subparsers.add_parser('report')
-  report_parser.add_argument('--model', required=True)
-  report_parser.add_argument('--variant')
-  report_parser.add_argument('--role', required=True)
-  curve_parser = subparsers.add_parser('curve')
-  curve_parser.add_argument('--model', required=True)
-  curve_parser.add_argument('--variant')
-  params_parser = subparsers.add_parser('params')
-  params_parser.add_argument('--model', required=True)
-  params_parser.add_argument('--variant')
-  summarize_parser = subparsers.add_parser('summarize')
-  summarize_parser.add_argument('--data', required=True)
-  subparsers.add_parser('fetch_mnist')
-  subparsers.add_parser('fetch_svhn')
-  subparsers.add_parser('fetch_svhn_img')
-  subparsers.add_parser('notebooks')
+  drive_parser.add_argument('--max-acc', type=float, help='break early acc limit')
+  report_parser = subparsers.add_parser('report', help='show results of trained model')
+  report_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  report_parser.add_argument('--variant', help='unique identifier')
+  report_parser.add_argument('--role', required=True, help='role type (train, valid, test)')
+  curve_parser = subparsers.add_parser('curve', help='show learning curve of trained model')
+  curve_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  curve_parser.add_argument('--variant', help='unique identifier')
+  params_parser = subparsers.add_parser('params', help='show params of trained model')
+  params_parser.add_argument('--model', required=True, help='model type (baseline, tf, vote)')
+  params_parser.add_argument('--variant', help='unique identifier')
+  summarize_parser = subparsers.add_parser('summarize', help='describe a dataset')
+  summarize_parser.add_argument('--data', required=True, help='dataset identifier (mnist-train, crop-small-test, etc)')
+  subparsers.add_parser('fetch_mnist', help='fetch MNIST dataset')
+  subparsers.add_parser('fetch_svhn', help='fetch SVHN dataset')
+  subparsers.add_parser('notebooks', help='render all notebooks to results')
   return parser
 
 def inspect(env, loader, args):
-  print('inspecting', args.model)
-  model_path = os.path.join(env.logs, args.model, 'model.ckpt')
+  print('inspecting', args.model, args.variant)
+  model_path = os.path.join('logs', env.model_name_plus(args.model, args.variant), 'model.ckpt')
   reader = tf.train.NewCheckpointReader(model_path)
   var_to_shape_map = reader.get_variable_to_shape_map()
   for key in var_to_shape_map:
@@ -258,7 +267,7 @@ def curve(env, loader, args):
 def params(env, loader, args):
   filename = env.resolve_model_file(args.model, args.variant, 'params.json')
   with open(filename, 'r') as f:
-    pprint.pprint(f.read())
+    print(f.read())
 
 def summarize(env, loader, args):
   proc = loader.load_data(args.data, preprocessor='noop', random_state=None)
@@ -294,21 +303,6 @@ class Cwd:
   def __exit__(self, x, y, z):
     os.chdir(self.c)
     self.c = None
-
-def fetch_svhn_img(env, loader, args):
-  for role in ['test']:
-    filename = role + '.tar.gz'
-    path = os.path.join(loader.data_path, filename)
-    if os.path.isfile(path):
-      print('found svhn img', role)
-    else:
-      print('fetching svhn img', role)
-      url = 'http://ufldl.stanford.edu/housenumbers/' + filename
-      response = urlopen(url)
-      with open(path, 'wb') as f:
-        f.write(response.read())
-      with Cwd(loader.data_path):
-        os.system('tar -xzf ' + filename)
 
 def notebooks(env, loader, args):
   nb_path = env.resolve('notebooks')
@@ -390,7 +384,6 @@ OPS = {
   'summarize': summarize,
   'fetch_mnist': fetch_mnist,
   'fetch_svhn': fetch_svhn,
-  'fetch_svhn_img': fetch_svhn_img,
   'notebooks': notebooks,
   'drive': drive
 }

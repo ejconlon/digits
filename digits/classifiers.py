@@ -58,6 +58,7 @@ class Model:
   def _resolve_role(self, role, clean=False):
     """
     Args:
+      role (str): one of (train, valid, test)
       clean (bool): remove existing dir
     Returns:
       (str) path to dir for role-specific model artifacts
@@ -67,6 +68,7 @@ class Model:
   def _resolve_model_file(self, filename, clean=False):
     """
     Args:
+      filename (str): path to file
       clean (bool): remove existing file
     Returns:
       (str) path to given model file
@@ -76,6 +78,8 @@ class Model:
   def _resolve_role_file(self, role, filename, clean=False):
     """
     Args:
+      role (str): one of (train, valid, test)
+      filename (str): path to file
       clean (bool): remove existing file
     Returns:
       (str) path to given role-specific model file

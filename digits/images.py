@@ -1,3 +1,7 @@
+"""
+Functions for working with images.
+"""
+
 import random
 import warnings
 
@@ -11,6 +15,8 @@ import skimage.transform
 import skimage.util
 
 from .common import product
+
+# Default parameters for image warping:
 
 # Scale limit (1.0 is identity)
 DEFAULT_SCALE=1.02
