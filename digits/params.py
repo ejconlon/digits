@@ -75,6 +75,27 @@ PARAMS = {
       rando_inversion = DEFAULT_INVERSION,
       invert = True
     ),
+    'crop-batch': Namespace(
+      num_classes = 10,
+      lam = 1e-4,
+      alpha = 0.003,
+      decay_factor = 0.1,
+      decay_step = 250,
+      break_display_step = 40,
+      training_iters = 1000000,
+      batch_size = 5000,
+      display_size = 10000,
+      display_step = 10,
+      dropout = 0.90,
+      convs = [(5, 64), (5, 64)],
+      fcs = [1024],
+      use_rando = False,
+      rando_scale = DEFAULT_SCALE,
+      rando_translation = DEFAULT_TRANSLATION,
+      rando_rotation = DEFAULT_ROTATION,
+      rando_inversion = DEFAULT_INVERSION,
+      invert = True
+    )
   }
 }
 
@@ -174,6 +195,16 @@ CONFIGS = [
     test_data_name='crop-test-big',
     preprocessor='color',
     param_set='crop'
+  ),
+
+  Namespace(
+    model='tf',
+    variant='crop-huge-batch',
+    train_data_name='crop-train-huge',
+    valid_data_name='crop-valid-huge',
+    test_data_name='crop-test-big',
+    preprocessor='color',
+    param_set='crop-batch'
   ),
 
   Namespace(

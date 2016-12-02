@@ -1,7 +1,7 @@
 digits
 ======
 
-a.k.a. "Classifying Street View House Numbers with Deep Learning"
+a.k.a. "An Impatient Approach to Classifying Digits with Deep Learning"
 
 Read `ejconlon_deep_svhn.pdf` for an explanation of some simple approaches to classification of SVHN and MNIST datasets with both conventional and deep learning methods.
 
@@ -35,7 +35,7 @@ The macOS build is currently only configured to use Python 3, but you can massag
 
 `make all` does a few things things: First, it runs a test suite that checks basic functionality. Then it trains several models on several datasets based on tuned parameters.  Finally, it evaluates all the IPython notebooks in the repo to generate some explorable reports and artifacts. The `results` directory might be worth exploring!
 
-Please note that these commands only train on small datasets with limited accuracies. The full runs take quite a long time and are currently only possible under Python3 (since Python2 can't pickle files larger than 2GB)!  However, if these complete, then their larger variants will too.  If you want to try the full training step, run `make train`.
+Please note that these commands only train on small datasets with limited accuracies. The full runs take quite a long time and are currently only possible under Python3 (since Python2 can't pickle files larger than 2GB)!  However, if these complete, then their larger variants will too.  If you want to try the full training step, run `make train`.  For the final large-batch CNN, run `make train-more`.
 
 Generating the report
 ---------------------

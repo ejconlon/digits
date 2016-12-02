@@ -60,6 +60,9 @@ train:
 	@$(MAKE) run ARGS="drive --model=baseline --variant=mnist"
 	@$(MAKE) run ARGS="drive --model=baseline --variant=crop-big"
 
+train-more:
+	@$(MAKE) run ARGS="drive --model=tf --variant=crop-huge-batch"
+
 test:
 	py.test tests
 
