@@ -209,6 +209,16 @@ CONFIGS = [
 
   Namespace(
     model='tf',
+    variant='crop-huge-batch2',
+    train_data_name='crop-train-huge',
+    valid_data_name='crop-valid-huge',
+    test_data_name='crop-test-big',
+    preprocessor='color',
+    param_set='crop-batch2'
+  ),
+
+  Namespace(
+    model='tf',
     variant='crop-big',
     train_data_name='crop-train-big',
     valid_data_name='crop-valid-big',
